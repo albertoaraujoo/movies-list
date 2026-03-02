@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getMovies } from "@/lib/api";
-import type { Movie, GetMoviesParams } from "@/lib/types";
+import type { Movie, GetMoviesParams, PaginatedMovies } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function MovieCardSkeleton() {
@@ -33,15 +33,16 @@ const WATCHED_LABELS: Record<WatchedFilter, string> = {
 };
 
 interface MovieGridProps {
-  initialMovies?: Movie[];
+  /** Resposta do servidor para watched: false — alinha primeiro paint ao filtro "Não assistidos" */
+  initialData?: PaginatedMovies | null;
 }
 
-export function MovieGrid({ initialMovies }: MovieGridProps) {
+export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps) {
   const { data: session } = useSession();
-  const [movies, setMovies] = useState<Movie[]>(initialMovies ?? []);
+  const [movies, setMovies] = useState<Movie[]>(initialDataFromServer?.data ?? []);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [watchedFilter, setWatchedFilter] = useState<WatchedFilter>("all");
+  const [watchedFilter, setWatchedFilter] = useState<WatchedFilter>("unwatched");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -63,11 +64,19 @@ export function MovieGrid({ initialMovies }: MovieGridProps) {
     queryFn: () => getMovies(params, session!.accessToken),
     enabled: !!session?.accessToken,
     placeholderData: (prev) => prev,
+    initialData:
+      watchedFilter === "unwatched" &&
+      !debouncedSearch &&
+      page === 1 &&
+      initialDataFromServer
+        ? initialDataFromServer
+        : undefined,
   });
 
   useEffect(() => {
     if (data?.data) setMovies(data.data);
-  }, [data]);
+    else if (initialDataFromServer?.data?.length) setMovies(initialDataFromServer.data);
+  }, [data, initialDataFromServer]);
 
   const handleMovieDeleted = useCallback((id: string) => {
     setMovies((prev) => prev.filter((m) => m.id !== id));

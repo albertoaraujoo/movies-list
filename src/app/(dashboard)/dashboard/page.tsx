@@ -43,8 +43,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Grid de filmes */}
-      <MovieGrid initialMovies={initialData?.data} />
+      {/* Grid de filmes — initialData alinhado a watched: false para primeiro paint sem opacidade */}
+      <MovieGrid initialData={initialData} />
     </div>
   );
 }

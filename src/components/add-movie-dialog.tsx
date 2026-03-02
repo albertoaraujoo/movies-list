@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Plus, Film, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -32,6 +33,7 @@ interface AddMovieDialogProps {
 }
 
 export function AddMovieDialog({ onAdded }: AddMovieDialogProps) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [selectedTmdb, setSelectedTmdb] = useState<TmdbResult | null>(null);
@@ -76,6 +78,7 @@ export function AddMovieDialog({ onAdded }: AddMovieDialogProps) {
           description: movie.title,
           icon: "🎬",
         });
+        queryClient.invalidateQueries({ queryKey: ["movies"] });
         onAdded?.(movie);
         setOpen(false);
         resetForm();
