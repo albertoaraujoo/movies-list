@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CineList — Frontend
 
-## Getting Started
+Interface para gerenciar sua lista pessoal de filmes com sorteio, integração TMDB e autenticação Google.
 
-First, run the development server:
+## Quick Start
 
 ```bash
+# 1. Clone e instale
+git clone <repo>
+cd movies-list-frontend
+npm install
+
+# 2. Variáveis de ambiente
+# Crie .env.local na raiz e preencha as variáveis (veja tabela abaixo).
+
+# 3. Inicie o servidor
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variáveis de ambiente
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Crie `.env.local` na raiz (não commite). Consulte [docs/setup.md](docs/setup.md) para detalhes.
 
-## Learn More
+| Variável | Descrição |
+|----------|-----------|
+| `NEXT_PUBLIC_API_URL` | URL base da API do backend |
+| `AUTH_GOOGLE_ID` | Google OAuth Client ID |
+| `AUTH_GOOGLE_SECRET` | Google OAuth Client Secret |
+| `AUTH_SECRET` | Segredo para assinar os tokens do Auth.js |
+| `TMDB_READ_ACCESS_TOKEN` | Token de leitura da API do TMDB |
 
-To learn more about Next.js, take a look at the following resources:
+## Documentação
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Documentação por tópico (PT-BR e EN):
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Tópico | 🇧🇷 Português | 🇺🇸 English |
+|--------|----------------|-------------|
+| Setup | [docs/setup.md](docs/setup.md) | [docs/en/setup.md](docs/en/setup.md) |
+| Autenticação | [docs/authentication.md](docs/authentication.md) | [docs/en/authentication.md](docs/en/authentication.md) |
+| API Reference | [docs/api-reference.md](docs/api-reference.md) | [docs/en/api-reference.md](docs/en/api-reference.md) |
+| Deploy | [docs/deployment.md](docs/deployment.md) | [docs/en/deployment.md](docs/en/deployment.md) |
 
-## Deploy on Vercel
+## Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Next.js 16** (App Router) + **React 19**
+- **TypeScript** strict mode
+- **Tailwind CSS v4** + **shadcn/ui**
+- **Auth.js v5** (Google Provider)
+- **Framer Motion** (animações)
+- **TanStack Query** (cache e sincronização)
+- **Lucide React** (ícones)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Funcionalidades
+
+- Login com Google → troca de token com backend NestJS
+- Lista de filmes com grid responsivo (2→4→5→6 colunas)
+- Cards estilo poster (2:3) com glassmorphism
+- Busca com autocomplete via TMDB
+- Marcar filmes como assistidos
+- Sorteio aleatório com animação de roleta
+- Lista de sorteados com drag-and-drop
