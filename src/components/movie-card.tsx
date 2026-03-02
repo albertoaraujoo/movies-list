@@ -82,8 +82,8 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
           "relative w-full overflow-hidden rounded-2xl cursor-pointer",
           "border transition-all duration-300",
           movie.watched
-            ? "border-primary/30 opacity-70"
-            : "border-border hover:border-primary/40",
+            ? "border-primary/30 opacity-50"
+            : "border-border opacity-100 hover:border-primary/40",
           isPending && "pointer-events-none opacity-50"
         )}
         style={{ aspectRatio: "2/3" }}
