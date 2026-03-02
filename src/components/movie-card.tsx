@@ -189,7 +189,7 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
         )}
       </div>
 
-      {/* Título abaixo do poster (mobile-friendly) */}
+      {/* Título abaixo do poster */}
       <div className="mt-2 px-0.5 space-y-0.5">
         <p className="font-display tracking-wider uppercase text-[clamp(0.65rem,1.1vw,0.8rem)] text-foreground line-clamp-1 leading-tight">
           {movie.title}
@@ -201,14 +201,43 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
         )}
       </div>
 
-      {/* Botão rápido de "marcar assistido" sem hover no card */}
+      {/* Botão "Visto" / "Marcar como visto" — sempre visível em mobile, destaque em todo viewport */}
       <button
+        type="button"
+        aria-label={movie.watched ? "Desmarcar assistido" : "Marcar como assistido"}
+        onClick={handleToggleWatched}
+        disabled={isPending}
+        className={cn(
+          "mt-2 w-full min-h-[44px] flex items-center justify-center gap-2 rounded-xl border font-sans text-sm font-medium transition-all duration-200",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
+          movie.watched
+            ? "border-primary/40 bg-primary/15 text-primary hover:bg-primary/25"
+            : "border-border bg-surface-raised/80 text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-surface-raised"
+        )}
+      >
+        {movie.watched ? (
+          <>
+            <CheckCircle2 className="size-4 shrink-0" />
+            <span>Visto</span>
+          </>
+        ) : (
+          <>
+            <Eye className="size-4 shrink-0" />
+            <span>Marcar como visto</span>
+          </>
+        )}
+      </button>
+
+      {/* Botão compacto no canto do poster (apenas desktop, ao hover) */}
+      <button
+        type="button"
         aria-label={movie.watched ? "Desmarcar assistido" : "Marcar como assistido"}
         onClick={handleToggleWatched}
         disabled={isPending}
         className={cn(
           "absolute bottom-[52px] right-2 p-1.5 rounded-full transition-all duration-200",
-          "opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100",
+          "hidden sm:flex opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100",
           "bg-surface/80 backdrop-blur-sm border border-border hover:border-primary/50",
           movie.watched ? "text-primary" : "text-muted-foreground hover:text-primary"
         )}
