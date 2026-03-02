@@ -98,7 +98,7 @@ export function AddMovieDialog({ onAdded }: AddMovieDialogProps) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="glass border-border sm:max-w-lg">
+      <DialogContent className="border-border bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display tracking-wider uppercase text-xl leading-none">
             <Film className="size-5 text-gold shrink-0" />
