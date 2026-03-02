@@ -8,8 +8,11 @@ import type {
   UpdateMoviePayload,
 } from "@/lib/types";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api/v1";
+const isDev = process.env.NODE_ENV === "development";
+const BASE_URL = isDev
+  ? ""
+  : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api/v1");
+const API_PREFIX = isDev ? "/api/v1" : "";
 
 // ─── HTTP Client ─────────────────────────────────────────────────────────────
 
@@ -18,8 +21,9 @@ async function apiFetch<T>(
   options: RequestInit & { token?: string } = {}
 ): Promise<T> {
   const { token, headers, ...rest } = options;
+  const url = `${BASE_URL}${API_PREFIX}${path}`;
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(url, {
     ...rest,
     headers: {
       "Content-Type": "application/json",

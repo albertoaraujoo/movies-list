@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, Filter, X, SlidersHorizontal } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MovieCard } from "@/components/movie-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -33,16 +33,17 @@ const WATCHED_LABELS: Record<WatchedFilter, string> = {
 };
 
 interface MovieGridProps {
-  /** Resposta do servidor para watched: false — alinha primeiro paint ao filtro "Não assistidos" */
+  /** Resposta do servidor (todos os filmes) para primeiro paint com lista visível */
   initialData?: PaginatedMovies | null;
 }
 
 export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps) {
+  const queryClient = useQueryClient();
   const { data: session } = useSession();
   const [movies, setMovies] = useState<Movie[]>(initialDataFromServer?.data ?? []);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [watchedFilter, setWatchedFilter] = useState<WatchedFilter>("unwatched");
+  const [watchedFilter, setWatchedFilter] = useState<WatchedFilter>("all");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -65,7 +66,7 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
     enabled: !!session?.accessToken,
     placeholderData: (prev) => prev,
     initialData:
-      watchedFilter === "unwatched" &&
+      watchedFilter === "all" &&
       !debouncedSearch &&
       page === 1 &&
       initialDataFromServer
@@ -82,9 +83,13 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
     setMovies((prev) => prev.filter((m) => m.id !== id));
   }, []);
 
-  const handleMovieUpdated = useCallback((updated: Movie) => {
-    setMovies((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-  }, []);
+  const handleMovieUpdated = useCallback(
+    (updated: Movie) => {
+      setMovies((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      queryClient.invalidateQueries({ queryKey: ["movies"] });
+    },
+    [queryClient]
+  );
 
   const totalPages = data?.meta?.totalPages ?? 1;
   const hasActiveFilters = watchedFilter !== "all" || debouncedSearch;
