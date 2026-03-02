@@ -37,6 +37,7 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
     queryKey: ["drawn-movies"],
     queryFn: () => getDrawnMovies(session!.accessToken),
     enabled: !!session?.accessToken,
+    initialData: initialItems,
     placeholderData: initialItems,
   });
 
