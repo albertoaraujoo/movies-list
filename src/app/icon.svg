@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-  <!-- Claquete (símbolo de cinema) -->
+  <!-- Clapperboard / cinema icon -->
   <path d="M6 10h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z" fill="currentColor"/>
   <path d="M22 8l6 3v10l-6 3V8Z" fill="currentColor"/>
   <path d="M22 11v10l3-1.5V12.5L22 11Z" fill="currentColor" opacity=".6"/>
