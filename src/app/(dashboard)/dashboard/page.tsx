@@ -13,10 +13,9 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const session = await auth();
   const initialData = session?.accessToken
-    ? await getMovies(
-        { page: 1, limit: 24, watched: false },
-        session.accessToken
-      ).catch(() => null)
+    ? await getMovies({ page: 1, limit: 24 }, session.accessToken).catch(
+        () => null
+      )
     : null;
 
   return (
@@ -43,7 +42,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Grid de filmes — initialData alinhado a watched: false para primeiro paint sem opacidade */}
+      {/* Grid de filmes — initialData = todos os filmes para primeiro paint com lista visível */}
       <MovieGrid initialData={initialData} />
     </div>
   );

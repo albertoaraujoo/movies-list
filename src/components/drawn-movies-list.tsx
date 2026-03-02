@@ -85,10 +85,10 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex flex-col items-center gap-3 py-12 text-center"
+        className="w-full flex flex-col items-center justify-center gap-3 py-16 text-center"
       >
         <span className="text-5xl">🎲</span>
-        <p className="font-sans text-sm text-muted-foreground leading-relaxed text-center">
+        <p className="font-sans text-sm text-muted-foreground leading-relaxed max-w-xs">
           Nenhum filme sorteado ainda.
           <br />
           Clique em &quot;Sortear Filme&quot; para começar!
