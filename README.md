@@ -57,6 +57,7 @@ Documentação por tópico (PT-BR e EN):
 - Login com Google → troca de token com backend NestJS
 - Lista de filmes com grid responsivo (2→4→5→6 colunas)
 - Cards estilo poster (2:3) com glassmorphism
+- **Página de detalhes do filme:** sinopse, duração, onde assistir no Brasil (streaming/aluguel/compra), ícones dos providers; botão “Sincronizar com TMDB” quando dados faltam
 - Busca com autocomplete via TMDB
 - Marcar filmes como assistidos
 - Sorteio aleatório com animação de roleta

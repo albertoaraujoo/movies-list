@@ -41,8 +41,22 @@ Usado internamente por `loginWithGoogle()` em `src/lib/api.ts`.
 
 - **CreateMoviePayload:** `title`, `notes?`, `tmdbId?`, `director?`, `year?`, `watched?`
 - **UpdateMoviePayload:** `title?`, `notes?`, `watched?`, `director?`, `year?`
-- **Movie:** `id`, `title`, `director`, `year`, `notes`, `watched`, `tmdbId`, `posterPath`, `userId`, `createdAt`, `updatedAt`, etc.
+- **Movie:** `id`, `title`, `director`, `year`, `notes`, `watched`, `tmdbId`, `posterPath`, `userId`, `createdAt`, `updatedAt`, `overview?`, `runtime?`, `watchProvidersBr?`, etc.
 - **PaginatedMovies:** `{ data: Movie[], meta: { total, page, limit, totalPages } }`
+
+**Campos do filme (página de detalhe / TMDB):**
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `overview` | `string \| null` | Sinopse do filme (TMDB). |
+| `runtime` | `number \| null` | Duração em minutos (TMDB). |
+| `watchProvidersBr` | `WatchProvidersBr \| null` | Onde assistir/alugar/comprar no Brasil (JustWatch). |
+
+**WatchProvider:** `logo_path`, `logoUrl?` (URL completa do ícone), `provider_id`, `provider_name`, `display_priority`.
+
+**WatchProvidersBr:** `link?`, `flatrate?` (streaming), `rent?` (aluguel), `buy?` (compra). Cada um é array de `WatchProvider`.
+
+Filmes antigos ou sem dados TMDB podem vir com `overview`, `runtime` e `watchProvidersBr` em `null`. Use `POST /movies/:id/sync-tmdb` para preencher.
 
 ---
 
