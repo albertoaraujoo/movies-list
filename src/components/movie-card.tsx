@@ -13,6 +13,7 @@ import {
   User2,
   MoreVertical,
   Info,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -149,6 +150,16 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
           </div>
         )}
 
+        {/* Badge nota (flutuante) — só em filmes vistos com nota */}
+        {movie.watched && movie.userRating != null && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full glass border border-white/10 text-foreground text-xs font-semibold pointer-events-none">
+            <Star className="size-3 fill-gold text-gold" />
+            {Number(movie.userRating) === Math.floor(movie.userRating)
+              ? String(movie.userRating)
+              : String(movie.userRating).replace(".", ",")}
+          </div>
+        )}
+
         {/* Indicador de sorteado */}
         {movie.drawn && !movie.watched && (
           <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-cinema-red/90 text-white text-xs font-semibold pointer-events-none">
@@ -207,6 +218,17 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
                     Ver detalhes
                   </Link>
                 </DropdownMenuItem>
+                {movie.watched && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href={`/movies/${movie.id}`}>
+                        <Star className="size-4" />
+                        Atribuir nota
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleToggleWatched}>
                   {movie.watched ? (

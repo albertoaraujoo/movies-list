@@ -7,14 +7,14 @@ export async function ProfilePanel() {
   const session = await auth();
   if (!session?.user) return null;
 
-  const [allData, watchedData] = await Promise.all([
-    getMovies({ page: 1, limit: 1 }, session.accessToken).catch(() => null),
-    getMovies({ page: 1, limit: 1, watched: true }, session.accessToken).catch(() => null),
-  ]);
+  const moviesResponse = await getMovies(
+    { page: 1, limit: 1 },
+    session.accessToken
+  ).catch(() => null);
 
-  const totalMovies = allData?.meta?.total ?? 0;
-  const watchedCount = watchedData?.meta?.total ?? 0;
-  const unwatchedCount = totalMovies - watchedCount;
+  const totalMovies = moviesResponse?.meta?.total ?? 0;
+  const watchedCount = moviesResponse?.watched?.length ?? 0;
+  const unwatchedCount = moviesResponse?.unwatched?.length ?? 0;
 
   const STATS = [
     { label: "Na lista", value: unwatchedCount, icon: Film, color: "text-gold" },

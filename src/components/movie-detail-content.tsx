@@ -12,12 +12,17 @@ import {
   Loader2,
   RefreshCw,
   User2,
+  Star,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { syncMovieTmdbAction } from "@/actions/movie-actions";
+import { syncMovieTmdbAction, updateMovieAction } from "@/actions/movie-actions";
 import type { Movie, WatchProvider } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const RATING_OPTIONS: number[] = [];
+for (let i = 0; i <= 20; i++) RATING_OPTIONS.push(i * 0.5);
 
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
 const LOGO_SIZE = "w92";
@@ -79,9 +84,15 @@ interface MovieDetailContentProps {
   movie: Movie;
 }
 
+function formatRating(value: number): string {
+  return value === Math.floor(value) ? String(value) : String(value).replace(".", ",");
+}
+
 export function MovieDetailContent({ movie }: MovieDetailContentProps) {
+  const queryClient = useQueryClient();
   const [currentMovie, setCurrentMovie] = useState(movie);
   const [isPending, startTransition] = useTransition();
+  const [ratingPending, setRatingPending] = useState(false);
   const hasMissingData =
     currentMovie.overview == null &&
     currentMovie.runtime == null &&
@@ -102,6 +113,18 @@ export function MovieDetailContent({ movie }: MovieDetailContentProps) {
         toast.error("Erro ao sincronizar com TMDB");
       }
     });
+  }
+
+  function handleSetRating(value: number) {
+    setRatingPending(true);
+    updateMovieAction(currentMovie.id, { userRating: value })
+      .then((updated) => {
+        setCurrentMovie(updated);
+        queryClient.invalidateQueries({ queryKey: ["movies"] });
+        toast.success("Nota atribuída", { description: `${updated.title}: ${formatRating(value)}` });
+      })
+      .catch(() => toast.error("Erro ao salvar nota"))
+      .finally(() => setRatingPending(false));
   }
 
   const w = currentMovie.watchProvidersBr;
@@ -178,6 +201,49 @@ export function MovieDetailContent({ movie }: MovieDetailContentProps) {
           )}
         </div>
       </motion.div>
+
+      {/* Sua nota — só quando o filme foi assistido */}
+      {currentMovie.watched && (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.03 }}
+          className="space-y-3"
+        >
+          <h2 className="font-display tracking-wider uppercase text-sm text-foreground flex items-center gap-2">
+            <Star className="size-4 fill-gold text-gold" />
+            Sua nota
+          </h2>
+          <p className="font-sans text-xs text-muted-foreground">
+            Clique em um valor para atribuir sua nota (0 a 10).
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {RATING_OPTIONS.map((value) => {
+              const isSelected =
+                currentMovie.userRating != null &&
+                Math.abs((currentMovie.userRating ?? 0) - value) < 0.01;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={ratingPending}
+                  onClick={() => handleSetRating(value)}
+                  className={cn(
+                    "min-w-9 px-2 py-1.5 rounded-lg border font-sans text-sm font-medium transition-all duration-200",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                    "disabled:pointer-events-none disabled:opacity-50",
+                    isSelected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-surface-raised/80 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  )}
+                >
+                  {formatRating(value)}
+                </button>
+              );
+            })}
+          </div>
+        </motion.section>
+      )}
 
       {/* Sinopse */}
       <motion.section

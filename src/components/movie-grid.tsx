@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getMovies } from "@/lib/api";
-import type { Movie, GetMoviesParams, PaginatedMovies } from "@/lib/types";
+import type { Movie, GetMoviesParams, GetMoviesResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function MovieCardSkeleton() {
@@ -33,14 +33,20 @@ const WATCHED_LABELS: Record<WatchedFilter, string> = {
 };
 
 interface MovieGridProps {
-  /** Resposta do servidor (todos os filmes) para primeiro paint com lista visível */
-  initialData?: PaginatedMovies | null;
+  /** Resposta do servidor (data, meta, watched, unwatched) para primeiro paint */
+  initialData?: GetMoviesResponse | null;
+}
+
+function getDisplayList(res: GetMoviesResponse | undefined, filter: WatchedFilter): Movie[] {
+  if (!res) return [];
+  if (filter === "watched") return res.watched ?? [];
+  if (filter === "unwatched") return res.unwatched ?? [];
+  return res.data ?? [];
 }
 
 export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps) {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
-  const [movies, setMovies] = useState<Movie[]>(initialDataFromServer?.data ?? []);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [watchedFilter, setWatchedFilter] = useState<WatchedFilter>("all");
@@ -56,8 +62,6 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
     page,
     limit: 24,
     ...(debouncedSearch && { search: debouncedSearch }),
-    ...(watchedFilter === "watched" && { watched: true }),
-    ...(watchedFilter === "unwatched" && { watched: false }),
   };
 
   const { data, isLoading, isFetching } = useQuery({
@@ -66,32 +70,34 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
     enabled: !!session?.accessToken,
     placeholderData: (prev) => prev,
     initialData:
-      watchedFilter === "all" &&
-      !debouncedSearch &&
-      page === 1 &&
-      initialDataFromServer
+      !debouncedSearch && page === 1 && initialDataFromServer
         ? initialDataFromServer
         : undefined,
   });
 
-  useEffect(() => {
-    if (data?.data) setMovies(data.data);
-    else if (initialDataFromServer?.data?.length) setMovies(initialDataFromServer.data);
-  }, [data, initialDataFromServer]);
+  const movies = getDisplayList(data, watchedFilter);
+  // #region agent log
+  fetch('http://127.0.0.1:7315/ingest/91794988-f3a4-4423-a884-4d00087f0612',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9dbbe4'},body:JSON.stringify({sessionId:'9dbbe4',location:'movie-grid.tsx:display',message:'Display list',data:{watchedFilter,watchedLen:data?.watched?.length,unwatchedLen:data?.unwatched?.length,moviesLen:movies.length,firstMovie:movies[0]?{id:movies[0].id,watched:movies[0].watched}:null},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+  // #endregion
+  const totalPages = data?.meta?.totalPages ?? 1;
+  const showPagination = watchedFilter === "all" && totalPages > 1;
+  const displayCount =
+    watchedFilter === "all" ? (data?.meta?.total ?? 0) : movies.length;
 
-  const handleMovieDeleted = useCallback((id: string) => {
-    setMovies((prev) => prev.filter((m) => m.id !== id));
-  }, []);
-
-  const handleMovieUpdated = useCallback(
-    (updated: Movie) => {
-      setMovies((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+  const handleMovieDeleted = useCallback(
+    (id: string) => {
       queryClient.invalidateQueries({ queryKey: ["movies"] });
     },
     [queryClient]
   );
 
-  const totalPages = data?.meta?.totalPages ?? 1;
+  const handleMovieUpdated = useCallback(
+    (_updated: Movie) => {
+      queryClient.invalidateQueries({ queryKey: ["movies"] });
+    },
+    [queryClient]
+  );
+
   const hasActiveFilters = watchedFilter !== "all" || debouncedSearch;
 
   return (
@@ -170,9 +176,9 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
 
         {/* Contador e filtro ativo */}
         <div className="flex items-center gap-2">
-          {data?.meta && (
+          {(data?.meta != null || movies.length > 0) && (
             <span className="font-sans text-xs text-muted-foreground leading-relaxed">
-              {data.meta.total} {data.meta.total === 1 ? "filme" : "filmes"}
+              {displayCount} {displayCount === 1 ? "filme" : "filmes"}
             </span>
           )}
           {hasActiveFilters && (
@@ -236,8 +242,8 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
         </motion.div>
       )}
 
-      {/* Paginação */}
-      {totalPages > 1 && (
+      {/* Paginação (apenas para filtro "Todos") */}
+      {showPagination && (
         <div className="flex items-center justify-center gap-2 pt-4">
           <Button
             variant="outline"

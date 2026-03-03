@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { getDrawnMovies } from "@/lib/api";
 import { DrawnMoviesList } from "@/components/drawn-movies-list";
 import { DrawButton } from "@/components/draw-button";
+import { AdminDrawnSection } from "@/components/admin-drawn-section";
 
 export const metadata: Metadata = {
   title: "Filmes Sorteados",
@@ -31,7 +32,10 @@ export default async function DrawnMoviesPage() {
           </p>
         </div>
 
-        <DrawButton />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <AdminDrawnSection initialDrawnItems={initialItems} />
+          <DrawButton />
+        </div>
       </div>
 
       {/* Explicação */}
