@@ -57,8 +57,8 @@ export default async function DrawnMoviesPage() {
         </div>
       </div>
 
-      {/* Lista — estado vazio (dado + mensagem) fica centralizado no componente */}
-      <div className="max-w-2xl">
+      {/* Lista — ocupa a largura máxima do container (grid 1→2→3→4 colunas) */}
+      <div className="w-full">
         <DrawnMoviesList initialItems={initialItems} />
       </div>
     </div>
