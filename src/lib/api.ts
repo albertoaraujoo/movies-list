@@ -5,10 +5,60 @@ import type {
   GetMoviesParams,
   Movie,
   PaginatedMovies,
+  PaginationMeta,
   UpdateMoviePayload,
+  WatchProvider,
+  WatchProvidersBr,
 } from "@/lib/types";
 
 const API_URL_FALLBACK = "http://localhost:3000/api/v1";
+
+/** Normaliza filme da API (aceita snake_case do backend) para o tipo Movie. */
+function normalizeMovie(raw: Record<string, unknown>): Movie {
+  const wpBr = raw.watchProvidersBr ?? raw.watch_providers_br;
+  let watchProvidersBr: WatchProvidersBr | null = null;
+  if (wpBr && typeof wpBr === "object" && !Array.isArray(wpBr)) {
+    const o = wpBr as Record<string, unknown>;
+    const normalizeProvider = (p: unknown): WatchProvider | null => {
+      if (!p || typeof p !== "object") return null;
+      const r = p as Record<string, unknown>;
+      return {
+        logo_path: r.logo_path != null ? String(r.logo_path) : null,
+        logoUrl: r.logoUrl != null ? String(r.logoUrl) : r.logo_url != null ? String(r.logo_url) : undefined,
+        provider_id: Number(r.provider_id),
+        provider_name: String(r.provider_name ?? ""),
+        display_priority: Number(r.display_priority ?? 0),
+      };
+    };
+    const flat = (arr: unknown): WatchProvider[] =>
+      Array.isArray(arr)
+        ? arr.map((p) => normalizeProvider(p)).filter((x): x is WatchProvider => x != null)
+        : [];
+    watchProvidersBr = {
+      ...(o.link != null ? { link: String(o.link) } : {}),
+      ...(o.flatrate ? { flatrate: flat(o.flatrate) } : {}),
+      ...(o.rent ? { rent: flat(o.rent) } : {}),
+      ...(o.buy ? { buy: flat(o.buy) } : {}),
+    };
+  }
+
+  return {
+    id: String(raw.id),
+    title: String(raw.title),
+    director: raw.director != null ? String(raw.director) : undefined,
+    year: raw.year != null ? Number(raw.year) : undefined,
+    notes: raw.notes != null ? String(raw.notes) : undefined,
+    watched: Boolean(raw.watched),
+    tmdbId: raw.tmdbId != null ? Number(raw.tmdbId) : raw.tmdb_id != null ? Number(raw.tmdb_id) : undefined,
+    posterPath: raw.posterPath != null ? String(raw.posterPath) : raw.poster_path != null ? String(raw.poster_path) : undefined,
+    userId: String(raw.userId ?? raw.user_id),
+    createdAt: String(raw.createdAt ?? raw.created_at),
+    updatedAt: String(raw.updatedAt ?? raw.updated_at),
+    overview: raw.overview != null ? String(raw.overview) : null,
+    runtime: raw.runtime != null ? Number(raw.runtime) : null,
+    watchProvidersBr: watchProvidersBr ?? null,
+  };
+}
 
 /** Em dev no cliente: usa proxy (same-origin). No servidor ou em prod: usa URL da API. */
 function getApiBase(): { base: string; prefix: string } {
@@ -82,25 +132,33 @@ export async function getMovies(
   if (params.limit) search.set("limit", String(params.limit));
 
   const query = search.toString();
-  return apiFetch<PaginatedMovies>(`/movies${query ? `?${query}` : ""}`, {
-    token,
-    next: { tags: ["movies"] },
-  } as RequestInit & { token: string });
+  const result = await apiFetch<{ data: Record<string, unknown>[]; meta: PaginationMeta }>(
+    `/movies${query ? `?${query}` : ""}`,
+    { token, next: { tags: ["movies"] } } as RequestInit & { token: string }
+  );
+  return {
+    data: result.data.map((m) => normalizeMovie(m)),
+    meta: result.meta,
+  };
 }
 
 export async function getMovie(id: string, token: string): Promise<Movie> {
-  return apiFetch<Movie>(`/movies/${id}`, { token } as RequestInit & { token: string });
+  const raw = await apiFetch<Record<string, unknown>>(`/movies/${id}`, {
+    token,
+  } as RequestInit & { token: string });
+  return normalizeMovie(raw);
 }
 
 export async function createMovie(
   payload: CreateMoviePayload,
   token: string
 ): Promise<Movie> {
-  return apiFetch<Movie>("/movies", {
+  const raw = await apiFetch<Record<string, unknown>>("/movies", {
     method: "POST",
     body: JSON.stringify(payload),
     token,
   } as RequestInit & { token: string });
+  return normalizeMovie(raw);
 }
 
 export async function updateMovie(
@@ -108,11 +166,12 @@ export async function updateMovie(
   payload: UpdateMoviePayload,
   token: string
 ): Promise<Movie> {
-  return apiFetch<Movie>(`/movies/${id}`, {
+  const raw = await apiFetch<Record<string, unknown>>(`/movies/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
     token,
   } as RequestInit & { token: string });
+  return normalizeMovie(raw);
 }
 
 export async function deleteMovie(id: string, token: string): Promise<void> {
@@ -123,10 +182,11 @@ export async function deleteMovie(id: string, token: string): Promise<void> {
 }
 
 export async function syncMovieTmdb(id: string, token: string): Promise<Movie> {
-  return apiFetch<Movie>(`/movies/${id}/sync-tmdb`, {
+  const raw = await apiFetch<Record<string, unknown>>(`/movies/${id}/sync-tmdb`, {
     method: "POST",
     token,
   } as RequestInit & { token: string });
+  return normalizeMovie(raw);
 }
 
 // ─── Drawn Movies ─────────────────────────────────────────────────────────────
