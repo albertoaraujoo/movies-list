@@ -47,6 +47,8 @@ export interface Movie {
   overview?: string | null;
   runtime?: number | null;
   watchProvidersBr?: WatchProvidersBr | null;
+  /** Nota do usuário (0 a 10 em passos de 0,5). */
+  userRating?: number | null;
 }
 
 export interface PaginationMeta {
@@ -59,6 +61,14 @@ export interface PaginationMeta {
 export interface PaginatedMovies {
   data: Movie[];
   meta: PaginationMeta;
+}
+
+/** Resposta de GET /movies (inclui listas watched e unwatched). */
+export interface GetMoviesResponse {
+  data: Movie[];
+  meta: PaginationMeta;
+  watched: Movie[];
+  unwatched: Movie[];
 }
 
 // ─── Payloads de requisição ──────────────────────────────────────────────────
@@ -78,6 +88,8 @@ export interface UpdateMoviePayload {
   watched?: boolean;
   director?: string;
   year?: number;
+  /** 0 a 10 em passos de 0,5. */
+  userRating?: number;
 }
 
 export interface GetMoviesParams {

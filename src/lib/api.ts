@@ -3,8 +3,8 @@ import type {
   CreateMoviePayload,
   DrawnMovie,
   GetMoviesParams,
+  GetMoviesResponse,
   Movie,
-  PaginatedMovies,
   PaginationMeta,
   UpdateMoviePayload,
   WatchProvider,
@@ -57,7 +57,17 @@ function normalizeMovie(raw: Record<string, unknown>): Movie {
     overview: raw.overview != null ? String(raw.overview) : null,
     runtime: raw.runtime != null ? Number(raw.runtime) : null,
     watchProvidersBr: watchProvidersBr ?? null,
+    userRating: normalizeUserRating(raw.userRating ?? raw.user_rating),
   };
+}
+
+/** Valores válidos: 0, 0.5, 1, ... 10. Arredonda para múltiplo de 0,5 ou null. */
+function normalizeUserRating(v: unknown): number | null {
+  if (v == null) return null;
+  const n = Number(v);
+  if (Number.isNaN(n) || n < 0 || n > 10) return null;
+  const half = Math.round(n * 2) / 2;
+  return half;
 }
 
 /** Em dev no cliente: usa proxy (same-origin). No servidor ou em prod: usa URL da API. */
@@ -122,7 +132,7 @@ export async function loginWithGoogle(idToken: string) {
 export async function getMovies(
   params: GetMoviesParams,
   token: string
-): Promise<PaginatedMovies> {
+): Promise<GetMoviesResponse> {
   const search = new URLSearchParams();
   if (params.search) search.set("search", params.search);
   if (params.watched !== undefined) search.set("watched", String(params.watched));
@@ -132,14 +142,38 @@ export async function getMovies(
   if (params.limit) search.set("limit", String(params.limit));
 
   const query = search.toString();
-  const result = await apiFetch<{ data: Record<string, unknown>[]; meta: PaginationMeta }>(
-    `/movies${query ? `?${query}` : ""}`,
-    { token, next: { tags: ["movies"] } } as RequestInit & { token: string }
-  );
-  return {
-    data: result.data.map((m) => normalizeMovie(m)),
-    meta: result.meta,
+  const result = await apiFetch<{
+    data: Record<string, unknown>[];
+    meta: PaginationMeta;
+    watched: Record<string, unknown>[];
+    unwatched: Record<string, unknown>[];
+  }>(`/movies${query ? `?${query}` : ""}`, {
+    token,
+    next: { tags: ["movies"] },
+  } as RequestInit & { token: string });
+
+  const r = result as Record<string, unknown>;
+  const rawWatched = (r?.watched ?? r?.watched_list ?? []) as Record<string, unknown>[];
+  const rawUnwatched = (r?.unwatched ?? r?.unwatched_list ?? []) as Record<string, unknown>[];
+  const rawData = (r?.data ?? []) as Record<string, unknown>[];
+  const rawMeta = r?.meta as PaginationMeta;
+
+  // #region agent log
+  fetch('http://127.0.0.1:7315/ingest/91794988-f3a4-4423-a884-4d00087f0612',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9dbbe4'},body:JSON.stringify({sessionId:'9dbbe4',location:'api.ts:getMovies:raw',message:'API raw response',data:{keys:Object.keys(r||{}),watchedLen:rawWatched.length,unwatchedLen:rawUnwatched.length,firstWatched:rawWatched[0]?{id:rawWatched[0].id,watched:rawWatched[0].watched}:null,firstUnwatched:rawUnwatched[0]?{id:rawUnwatched[0].id,watched:rawUnwatched[0].watched}:null},timestamp:Date.now(),hypothesisId:'H1,H2'})}).catch(()=>{});
+  // #endregion
+
+  const out = {
+    data: rawData.map((m) => normalizeMovie(m)),
+    meta: rawMeta ?? { total: 0, page: 1, limit: 24, totalPages: 0 },
+    watched: rawWatched.map((m) => normalizeMovie(m)),
+    unwatched: rawUnwatched.map((m) => normalizeMovie(m)),
   };
+  // #region agent log
+  const nw = out.watched[0];
+  const nu = out.unwatched[0];
+  fetch('http://127.0.0.1:7315/ingest/91794988-f3a4-4423-a884-4d00087f0612',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9dbbe4'},body:JSON.stringify({sessionId:'9dbbe4',location:'api.ts:getMovies:normalized',message:'After normalize',data:{firstWatched:nw?{id:nw.id,watched:nw.watched}:null,firstUnwatched:nu?{id:nu.id,watched:nu.watched}:null},timestamp:Date.now(),hypothesisId:'H4,H5'})}).catch(()=>{});
+  // #endregion
+  return out;
 }
 
 export async function getMovie(id: string, token: string): Promise<Movie> {
@@ -211,6 +245,35 @@ export async function removeDrawnMovie(
 ): Promise<void> {
   return apiFetch<void>(`/movies/drawn/${drawnId}`, {
     method: "DELETE",
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function addMovieToDrawn(
+  movieId: string,
+  token: string
+): Promise<DrawnMovie> {
+  return apiFetch<DrawnMovie>("/movies/drawn", {
+    method: "POST",
+    body: JSON.stringify({ movieId }),
+    token,
+  } as RequestInit & { token: string });
+}
+
+/** Payload para adicionar à lista de sorteados direto pela TMDB (cria filme e adiciona). */
+export interface AddToDrawnFromTmdbPayload {
+  title: string;
+  tmdbId?: number;
+  year?: number;
+}
+
+export async function addMovieToDrawnFromTmdb(
+  payload: AddToDrawnFromTmdbPayload,
+  token: string
+): Promise<DrawnMovie> {
+  return apiFetch<DrawnMovie>("/movies/drawn/from-tmdb", {
+    method: "POST",
+    body: JSON.stringify(payload),
     token,
   } as RequestInit & { token: string });
 }

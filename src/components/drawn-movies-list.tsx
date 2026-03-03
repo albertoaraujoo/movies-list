@@ -5,7 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { X, Eye, GripVertical, Film } from "lucide-react";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { removeDrawnMovieAction, markWatchedAction } from "@/actions/movie-actions";
 import { getDrawnMovies } from "@/lib/api";
@@ -31,6 +31,7 @@ interface DrawnMoviesListProps {
 
 export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
 
   const { data: serverItems, isLoading } = useQuery({
@@ -50,6 +51,7 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
     startTransition(async () => {
       try {
         await removeDrawnMovieAction(drawnId);
+        queryClient.invalidateQueries({ queryKey: ["drawn-movies"] });
         toast.success("Removido da lista de sorteados", { description: title });
         setItems((prev) => prev.filter((i) => i.id !== drawnId));
       } catch {
@@ -62,6 +64,7 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
     startTransition(async () => {
       try {
         await markWatchedAction(movieId, true);
+        queryClient.invalidateQueries({ queryKey: ["drawn-movies"] });
         toast.success("Marcado como assistido!", { description: title, icon: "✅" });
         setItems((prev) => prev.filter((i) => i.id !== drawnId));
       } catch {

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import {
+  addMovieToDrawn,
+  addMovieToDrawnFromTmdb,
   createMovie,
   deleteMovie,
   drawMovie,
@@ -11,7 +13,12 @@ import {
   syncMovieTmdb,
   updateMovie,
 } from "@/lib/api";
-import type { CreateMoviePayload, Movie, UpdateMoviePayload } from "@/lib/types";
+import type {
+  CreateMoviePayload,
+  DrawnMovie,
+  Movie,
+  UpdateMoviePayload,
+} from "@/lib/types";
 
 async function getToken(): Promise<string> {
   const session = await auth();
@@ -61,6 +68,26 @@ export async function removeDrawnMovieAction(drawnId: string) {
   const token = await getToken();
   await removeDrawnMovie(drawnId, token);
   revalidatePath("/drawn");
+}
+
+export async function addMovieToDrawnAction(movieId: string): Promise<DrawnMovie> {
+  const token = await getToken();
+  const drawn = await addMovieToDrawn(movieId, token);
+  revalidatePath("/drawn");
+  revalidatePath("/");
+  return drawn;
+}
+
+export async function addMovieToDrawnFromTmdbAction(payload: {
+  title: string;
+  tmdbId?: number;
+  year?: number;
+}): Promise<DrawnMovie> {
+  const token = await getToken();
+  const drawn = await addMovieToDrawnFromTmdb(payload, token);
+  revalidatePath("/drawn");
+  revalidatePath("/");
+  return drawn;
 }
 
 export async function getMovieAction(id: string): Promise<Movie | null> {
