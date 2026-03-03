@@ -14,6 +14,23 @@ export interface DrawnMovie {
   movie: Movie;
 }
 
+// Onde assistir (JustWatch / TMDB)
+export interface WatchProvider {
+  logo_path: string | null;
+  /** URL completa do ícone (API já retorna pronta para <img src>) */
+  logoUrl?: string;
+  provider_id: number;
+  provider_name: string;
+  display_priority: number;
+}
+
+export interface WatchProvidersBr {
+  link?: string;
+  flatrate?: WatchProvider[];
+  rent?: WatchProvider[];
+  buy?: WatchProvider[];
+}
+
 export interface Movie {
   id: string;
   title: string;
@@ -27,6 +44,9 @@ export interface Movie {
   createdAt: string;
   updatedAt: string;
   drawn?: DrawnMovie;
+  overview?: string | null;
+  runtime?: number | null;
+  watchProvidersBr?: WatchProvidersBr | null;
 }
 
 export interface PaginationMeta {

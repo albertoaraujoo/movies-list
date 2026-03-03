@@ -2,16 +2,17 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
-  Circle,
   Trash2,
   Eye,
   EyeOff,
   Calendar,
   User2,
   MoreVertical,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -76,10 +77,11 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
       onHoverEnd={() => setIsHovered(false)}
       data-slot="movie-card"
     >
-      {/* Poster — proporção 2:3 estilo cinema */}
-      <div
+      {/* Poster — proporção 2:3; clicável para detalhes */}
+      <Link
+        href={`/movies/${movie.id}`}
         className={cn(
-          "relative w-full overflow-hidden rounded-2xl cursor-pointer",
+          "block relative w-full overflow-hidden rounded-2xl cursor-pointer",
           "border transition-all duration-300",
           movie.watched
             ? "border-primary/30 opacity-50"
@@ -105,7 +107,7 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
           </div>
         )}
 
-        {/* Overlay com glassmorphism ao hover */}
+        {/* Overlay com infos ao hover (apenas desktop) */}
         <AnimatePresence>
           {isHovered && (
             <motion.div
@@ -113,43 +115,9 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="absolute inset-0 glass flex flex-col justify-between p-3"
+              className="absolute inset-0 glass flex-col justify-end p-3 max-sm:hidden sm:flex"
+              onClick={(e) => e.preventDefault()}
             >
-              {/* Topo: menu */}
-              <div className="flex justify-end">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      aria-label="Opções do filme"
-                      className="p-1.5 rounded-lg glass hover:bg-white/10 transition-colors"
-                    >
-                      <MoreVertical className="size-4 text-foreground" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="glass border-border">
-                    <DropdownMenuItem onClick={handleToggleWatched}>
-                      {movie.watched ? (
-                        <>
-                          <EyeOff className="size-4" /> Desmarcar assistido
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="size-4" /> Marcar como assistido
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={handleDelete}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="size-4" /> Remover
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Base: título e infos */}
               <div className="space-y-1.5">
                 <p className="font-display tracking-wider uppercase text-[clamp(0.7rem,1.3vw,0.85rem)] leading-tight text-foreground line-clamp-2">
                   {movie.title}
@@ -175,7 +143,7 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
 
         {/* Badge "Assistido" */}
         {movie.watched && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/90 text-primary-foreground text-xs font-semibold">
+          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/90 text-primary-foreground text-xs font-semibold pointer-events-none">
             <CheckCircle2 className="size-3" />
             Visto
           </div>
@@ -183,71 +151,91 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
 
         {/* Indicador de sorteado */}
         {movie.drawn && !movie.watched && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-cinema-red/90 text-white text-xs font-semibold">
+          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-cinema-red/90 text-white text-xs font-semibold pointer-events-none">
             🎲 Sorteado
           </div>
         )}
-      </div>
+      </Link>
 
-      {/* Título abaixo do poster */}
-      <div className="mt-2 px-0.5 space-y-0.5">
-        <p className="font-display tracking-wider uppercase text-[clamp(0.65rem,1.1vw,0.8rem)] text-foreground line-clamp-1 leading-tight">
-          {movie.title}
-        </p>
+      {/* Título + ações: Ver mais (olho + texto), Visto/Não visto (verde/vermelho), três pontos — iguais em mobile e desktop */}
+      <div className="mt-2 px-0.5 space-y-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="font-display tracking-wider uppercase text-[clamp(0.65rem,1.1vw,0.8rem)] text-foreground line-clamp-1 leading-tight flex-1 min-w-0">
+            {movie.title}
+          </p>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Visto / Não visto — tons de amarelo do projeto: visto = check, não visto = olho */}
+            <button
+              type="button"
+              aria-label={movie.watched ? "Desmarcar assistido" : "Marcar como assistido"}
+              onClick={handleToggleWatched}
+              disabled={isPending}
+              className={cn(
+                "flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border transition-all duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
+                movie.watched
+                  ? "border-primary bg-primary text-primary-foreground hover:brightness-110 focus-visible:ring-primary/50"
+                  : "border-gold bg-gold/20 text-gold hover:bg-gold/30 focus-visible:ring-gold/50"
+              )}
+            >
+              {movie.watched ? (
+                <CheckCircle2 className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
+            </button>
+            {/* Três pontos — opções, mobile e desktop */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Opções do filme"
+                  className={cn(
+                    "flex p-2 rounded-full border transition-all duration-200 min-w-[44px] min-h-[44px] items-center justify-center",
+                    "bg-surface-raised/90 border-border hover:border-primary/50 hover:bg-white/5",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  )}
+                >
+                  <MoreVertical className="size-4 text-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="border-border bg-background shadow-lg">
+                <DropdownMenuItem asChild>
+                  <Link href={`/movies/${movie.id}`}>
+                    <Info className="size-4" />
+                    Ver detalhes
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleToggleWatched}>
+                  {movie.watched ? (
+                    <>
+                      <EyeOff className="size-4" /> Desmarcar assistido
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="size-4" /> Marcar como assistido
+                    </>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleDelete}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="size-4" /> Remover
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
         {movie.year && (
           <p className="font-sans text-[0.65rem] text-muted-foreground leading-relaxed">
             {movie.year}
           </p>
         )}
       </div>
-
-      {/* Botão "Visto" / "Marcar como visto" — sempre visível em mobile, destaque em todo viewport */}
-      <button
-        type="button"
-        aria-label={movie.watched ? "Desmarcar assistido" : "Marcar como assistido"}
-        onClick={handleToggleWatched}
-        disabled={isPending}
-        className={cn(
-          "mt-2 w-full min-h-[44px] flex items-center justify-center gap-2 rounded-xl border font-sans text-sm font-medium transition-all duration-200",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
-          movie.watched
-            ? "border-primary/40 bg-primary/15 text-primary hover:bg-primary/25"
-            : "border-border bg-surface-raised/80 text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-surface-raised"
-        )}
-      >
-        {movie.watched ? (
-          <>
-            <CheckCircle2 className="size-4 shrink-0" />
-            <span>Visto</span>
-          </>
-        ) : (
-          <>
-            <Eye className="size-4 shrink-0" />
-            <span>Marcar como visto</span>
-          </>
-        )}
-      </button>
-
-      {/* Botão compacto no canto do poster (apenas desktop, ao hover) */}
-      <button
-        type="button"
-        aria-label={movie.watched ? "Desmarcar assistido" : "Marcar como assistido"}
-        onClick={handleToggleWatched}
-        disabled={isPending}
-        className={cn(
-          "absolute bottom-[52px] right-2 p-1.5 rounded-full transition-all duration-200",
-          "hidden sm:flex opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100",
-          "bg-surface/80 backdrop-blur-sm border border-border hover:border-primary/50",
-          movie.watched ? "text-primary" : "text-muted-foreground hover:text-primary"
-        )}
-      >
-        {movie.watched ? (
-          <CheckCircle2 className="size-4" />
-        ) : (
-          <Circle className="size-4" />
-        )}
-      </button>
     </motion.div>
   );
 }

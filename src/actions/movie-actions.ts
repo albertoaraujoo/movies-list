@@ -6,10 +6,12 @@ import {
   createMovie,
   deleteMovie,
   drawMovie,
+  getMovie,
   removeDrawnMovie,
+  syncMovieTmdb,
   updateMovie,
 } from "@/lib/api";
-import type { CreateMoviePayload, UpdateMoviePayload } from "@/lib/types";
+import type { CreateMoviePayload, Movie, UpdateMoviePayload } from "@/lib/types";
 
 async function getToken(): Promise<string> {
   const session = await auth();
@@ -59,4 +61,23 @@ export async function removeDrawnMovieAction(drawnId: string) {
   const token = await getToken();
   await removeDrawnMovie(drawnId, token);
   revalidatePath("/drawn");
+}
+
+export async function getMovieAction(id: string): Promise<Movie | null> {
+  try {
+    const token = await getToken();
+    return await getMovie(id, token);
+  } catch {
+    return null;
+  }
+}
+
+export async function syncMovieTmdbAction(id: string) {
+  const token = await getToken();
+  await syncMovieTmdb(id, token);
+  revalidatePath("/");
+  revalidatePath("/drawn");
+  revalidatePath(`/movies/${id}`);
+  // Refetch do filme completo (o sync pode retornar payload mínimo; GET traz tudo)
+  return await getMovie(id, token);
 }
