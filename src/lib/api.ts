@@ -8,11 +8,17 @@ import type {
   UpdateMoviePayload,
 } from "@/lib/types";
 
-const isDev = process.env.NODE_ENV === "development";
-const BASE_URL = isDev
-  ? ""
-  : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api/v1");
-const API_PREFIX = isDev ? "/api/v1" : "";
+const API_URL_FALLBACK = "http://localhost:3000/api/v1";
+
+/** Em dev no cliente: usa proxy (same-origin). No servidor ou em prod: usa URL da API. */
+function getApiBase(): { base: string; prefix: string } {
+  const isDev = process.env.NODE_ENV === "development";
+  const fullUrl = process.env.NEXT_PUBLIC_API_URL ?? API_URL_FALLBACK;
+  if (typeof window !== "undefined" && isDev) {
+    return { base: "", prefix: "/api/v1" };
+  }
+  return { base: fullUrl, prefix: "" };
+}
 
 // ─── HTTP Client ─────────────────────────────────────────────────────────────
 
@@ -21,7 +27,8 @@ async function apiFetch<T>(
   options: RequestInit & { token?: string } = {}
 ): Promise<T> {
   const { token, headers, ...rest } = options;
-  const url = `${BASE_URL}${API_PREFIX}${path}`;
+  const { base, prefix } = getApiBase();
+  const url = `${base}${prefix}${path}`;
 
   const res = await fetch(url, {
     ...rest,
