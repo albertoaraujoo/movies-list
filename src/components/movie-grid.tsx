@@ -76,9 +76,6 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
   });
 
   const movies = getDisplayList(data, watchedFilter);
-  // #region agent log
-  fetch('http://127.0.0.1:7315/ingest/91794988-f3a4-4423-a884-4d00087f0612',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9dbbe4'},body:JSON.stringify({sessionId:'9dbbe4',location:'movie-grid.tsx:display',message:'Display list',data:{watchedFilter,watchedLen:data?.watched?.length,unwatchedLen:data?.unwatched?.length,moviesLen:movies.length,firstMovie:movies[0]?{id:movies[0].id,watched:movies[0].watched}:null},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
   const totalPages = data?.meta?.totalPages ?? 1;
   const showPagination = watchedFilter === "all" && totalPages > 1;
   const displayCount =
@@ -114,7 +111,7 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
                 setPage(1);
               }}
               placeholder="Buscar filmes..."
-              className="pl-10 glass border-border focus-visible:border-primary/50 bg-transparent"
+              className="text-base pl-10 glass border-border focus-visible:border-primary/50 bg-transparent"
             />
             {search && (
               <button

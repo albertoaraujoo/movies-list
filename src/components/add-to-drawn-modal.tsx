@@ -75,11 +75,7 @@ export function AddToDrawnModal({ open, onOpenChange }: AddToDrawnModalProps) {
         setSelectedId(null);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro ao adicionar";
-        if (msg.includes("já está") || msg.includes("lista cheia")) {
-          toast.error(msg);
-        } else {
-          toast.error("Erro ao adicionar à lista de sorteados");
-        }
+        toast.error(msg);
       }
     });
   }
@@ -102,11 +98,7 @@ export function AddToDrawnModal({ open, onOpenChange }: AddToDrawnModalProps) {
         setSelectedTmdb(null);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro ao adicionar";
-        if (msg.includes("lista cheia")) {
-          toast.error(msg);
-        } else {
-          toast.error("Erro ao adicionar à lista de sorteados");
-        }
+        toast.error(msg);
       }
     });
   }

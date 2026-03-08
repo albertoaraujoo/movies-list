@@ -5,6 +5,7 @@ import { MovieGrid } from "@/components/movie-grid";
 import { AddMovieDialog } from "@/components/add-movie-dialog";
 import { DrawButton } from "@/components/draw-button";
 import { ProfilePanel } from "@/components/dashboard/profile-panel";
+import { AdminDeduplicateButton } from "@/components/dashboard/admin-deduplicate-button";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -39,6 +40,7 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <DrawButton />
           <AddMovieDialog />
+          <AdminDeduplicateButton />
         </div>
       </div>
 

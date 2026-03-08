@@ -1,6 +1,7 @@
 import type {
   ApiResponse,
   CreateMoviePayload,
+  DeduplicateResponse,
   DrawnMovie,
   GetMoviesParams,
   GetMoviesResponse,
@@ -276,6 +277,22 @@ export async function addMovieToDrawnFromTmdb(
     body: JSON.stringify(payload),
     token,
   } as RequestInit & { token: string });
+}
+
+export async function deduplicateMovies(token: string): Promise<DeduplicateResponse> {
+  const raw = await apiFetch<Record<string, unknown>>("/movies/deduplicate", {
+    method: "POST",
+    token,
+  } as RequestInit & { token: string });
+  const removedCount = Number(raw?.removedCount ?? raw?.removed_count ?? 0);
+  const groupsRaw = raw?.groups as Array<{ kept: Record<string, unknown>; removed: Record<string, unknown>[] }> | undefined;
+  const groups = Array.isArray(groupsRaw)
+    ? groupsRaw.map((g) => ({
+        kept: normalizeMovie(g.kept),
+        removed: (g.removed ?? []).map((m) => normalizeMovie(m)),
+      }))
+    : [];
+  return { removedCount, groups };
 }
 
 // ─── TMDB Search (direto no cliente via API do Next.js) ──────────────────────

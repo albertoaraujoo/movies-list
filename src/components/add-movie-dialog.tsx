@@ -162,7 +162,7 @@ export function AddMovieDialog({ onAdded }: AddMovieDialogProps) {
                 value={manualTitle}
                 onChange={(e) => setManualTitle(e.target.value)}
                 placeholder="Ex: Interestelar"
-                className="glass border-border focus-visible:border-primary/50 bg-transparent"
+                className="text-base glass border-border focus-visible:border-primary/50 bg-transparent"
               />
             </div>
           )}
@@ -180,7 +180,7 @@ export function AddMovieDialog({ onAdded }: AddMovieDialogProps) {
               placeholder="Indicação, onde assistir, lembrete..."
               rows={3}
               className={cn(
-                "w-full px-3 py-2.5 rounded-xl text-sm resize-none",
+                "w-full px-3 py-2.5 rounded-xl text-base resize-none",
                 "glass border border-border",
                 "text-foreground placeholder:text-muted-foreground",
                 "focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20",

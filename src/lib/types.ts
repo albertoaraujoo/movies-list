@@ -71,6 +71,12 @@ export interface GetMoviesResponse {
   unwatched: Movie[];
 }
 
+/** Resposta de POST /movies/deduplicate. */
+export interface DeduplicateResponse {
+  removedCount: number;
+  groups: Array<{ kept: Movie; removed: Movie[] }>;
+}
+
 // ─── Payloads de requisição ──────────────────────────────────────────────────
 
 export interface CreateMoviePayload {

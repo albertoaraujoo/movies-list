@@ -78,82 +78,82 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
       onHoverEnd={() => setIsHovered(false)}
       data-slot="movie-card"
     >
-      {/* Poster — proporção 2:3; clicável para detalhes */}
-      <Link
-        href={`/movies/${movie.id}`}
-        className={cn(
-          "block relative w-full overflow-hidden rounded-2xl cursor-pointer",
-          "border transition-all duration-300",
-          movie.watched
-            ? "border-primary/30 opacity-50"
-            : "border-border opacity-100 hover:border-primary/40",
-          isPending && "pointer-events-none opacity-50"
-        )}
-        style={{ aspectRatio: "2/3" }}
-      >
-        {movie.posterPath ? (
-          <Image
-            src={movie.posterPath}
-            alt={`Poster de ${movie.title}`}
-            fill
-            sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 18vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-            unoptimized
-          />
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-raised px-3">
-            <span className="text-4xl">🎬</span>
-            <span className="font-display tracking-widest uppercase text-center text-[clamp(0.6rem,1.1vw,0.8rem)] leading-tight text-gold/80 line-clamp-3">
-              {movie.title}
-            </span>
-          </div>
-        )}
-
-        {/* Overlay com infos ao hover (apenas desktop) */}
-        <AnimatePresence>
-          {isHovered && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 glass flex-col justify-end p-3 max-sm:hidden sm:flex"
-              onClick={(e) => e.preventDefault()}
-            >
-              <div className="space-y-1.5">
-                <p className="font-display tracking-wider uppercase text-[clamp(0.7rem,1.3vw,0.85rem)] leading-tight text-foreground line-clamp-2">
-                  {movie.title}
-                </p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {movie.year && (
-                    <span className="flex items-center gap-1 font-sans text-xs text-muted-foreground leading-relaxed">
-                      <Calendar className="size-3 shrink-0" />
-                      {movie.year}
-                    </span>
-                  )}
-                  {movie.director && (
-                    <span className="flex items-center gap-1 font-sans text-xs text-muted-foreground leading-relaxed">
-                      <User2 className="size-3 shrink-0" />
-                      <span className="truncate max-w-[80px]">{movie.director}</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            </motion.div>
+      {/* Wrapper do poster: badges ficam por cima (z-10) para não herdarem opacity do Link */}
+      <div className="relative w-full" style={{ aspectRatio: "2/3" }}>
+        <Link
+          href={`/movies/${movie.id}`}
+          className={cn(
+            "block relative w-full h-full overflow-hidden rounded-2xl cursor-pointer",
+            "border transition-all duration-300",
+            movie.watched
+              ? "border-primary/30 opacity-50"
+              : "border-border opacity-100 hover:border-primary/40",
+            isPending && "pointer-events-none opacity-50"
           )}
-        </AnimatePresence>
+        >
+          {movie.posterPath ? (
+            <Image
+              src={movie.posterPath}
+              alt={`Poster de ${movie.title}`}
+              fill
+              sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 18vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              unoptimized
+            />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-raised px-3">
+              <span className="text-4xl">🎬</span>
+              <span className="font-display tracking-widest uppercase text-center text-[clamp(0.6rem,1.1vw,0.8rem)] leading-tight text-gold/80 line-clamp-3">
+                {movie.title}
+              </span>
+            </div>
+          )}
 
-        {/* Badge "Assistido" */}
+          {/* Faixa de dados ao hover (desktop): só sobre título/ano/diretor, resto do poster visível */}
+          <AnimatePresence>
+            {isHovered && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute bottom-0 left-0 right-0 p-3 max-sm:hidden sm:block bg-black/75 backdrop-blur-sm rounded-b-2xl"
+                onClick={(e) => e.preventDefault()}
+              >
+                <div className="space-y-1.5">
+                  <p className="font-display tracking-wider uppercase text-[clamp(0.7rem,1.3vw,0.85rem)] leading-tight text-foreground line-clamp-2">
+                    {movie.title}
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {movie.year && (
+                      <span className="flex items-center gap-1 font-sans text-xs text-foreground/95 leading-relaxed">
+                        <Calendar className="size-3 shrink-0" />
+                        {movie.year}
+                      </span>
+                    )}
+                    {movie.director && (
+                      <span className="flex items-center gap-1 font-sans text-xs text-foreground/95 leading-relaxed">
+                        <User2 className="size-3 shrink-0" />
+                        <span className="truncate max-w-[80px]">{movie.director}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Link>
+
+        {/* Badges por cima da opacidade do poster (z-10, fora do Link) */}
         {movie.watched && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/90 text-primary-foreground text-xs font-semibold pointer-events-none">
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/95 text-primary-foreground text-xs font-semibold pointer-events-none shadow-md">
             <CheckCircle2 className="size-3" />
             Visto
           </div>
         )}
 
-        {/* Badge nota (flutuante) — só em filmes vistos com nota */}
         {movie.watched && movie.userRating != null && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full glass border border-white/10 text-foreground text-xs font-semibold pointer-events-none">
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/85 border border-white/20 text-foreground text-xs font-semibold pointer-events-none shadow-md">
             <Star className="size-3 fill-gold text-gold" />
             {Number(movie.userRating) === Math.floor(movie.userRating)
               ? String(movie.userRating)
@@ -161,13 +161,12 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
           </div>
         )}
 
-        {/* Indicador de sorteado */}
         {movie.drawn && !movie.watched && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-cinema-red/90 text-white text-xs font-semibold pointer-events-none">
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-cinema-red/95 text-white text-xs font-semibold pointer-events-none shadow-md">
             🎲 Sorteado
           </div>
         )}
-      </Link>
+      </div>
 
       {/* Título + ações: Ver mais (olho + texto), Visto/Não visto (verde/vermelho), três pontos — iguais em mobile e desktop */}
       <div className="mt-2 px-0.5 space-y-1">
