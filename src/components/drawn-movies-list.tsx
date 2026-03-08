@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { removeDrawnMovieAction, markWatchedAction } from "@/actions/movie-actions";
 import { getDrawnMovies } from "@/lib/api";
+import { getTmdbPosterUrl } from "@/lib/tmdb-images";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -156,11 +157,12 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
               <div className="relative w-10 h-14 rounded-lg overflow-hidden bg-surface-raised border border-border shrink-0">
                 {item.movie.posterPath ? (
                   <Image
-                    src={item.movie.posterPath}
+                    src={getTmdbPosterUrl(item.movie.posterPath, "w300") ?? item.movie.posterPath}
                     alt={item.movie.title}
                     fill
                     sizes="40px"
                     className="object-cover"
+                    loading="lazy"
                     unoptimized
                   />
                 ) : (

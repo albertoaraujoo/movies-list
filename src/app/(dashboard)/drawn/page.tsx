@@ -1,24 +1,21 @@
+import { Suspense } from "react";
 import { Metadata } from "next";
 import { Shuffle } from "lucide-react";
 import { auth } from "@/auth";
 import { getDrawnMovies } from "@/lib/api";
-import { DrawnMoviesList } from "@/components/drawn-movies-list";
 import { DrawButton } from "@/components/draw-button";
 import { AdminDrawnSection } from "@/components/admin-drawn-section";
+import { DrawnMoviesList } from "@/components/drawn-movies-list";
+import { DrawnListSkeleton } from "./drawn-list-skeleton";
 
 export const metadata: Metadata = {
   title: "Filmes Sorteados",
 };
 
-export default async function DrawnMoviesPage() {
-  const session = await auth();
-  const initialItems = session?.accessToken
-    ? await getDrawnMovies(session.accessToken).catch(() => [])
-    : [];
-
+export default function DrawnMoviesPage() {
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/* Header estático */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
         <div>
           <div className="flex items-center gap-3">
@@ -30,11 +27,6 @@ export default async function DrawnMoviesPage() {
           <p className="font-sans text-sm text-muted-foreground mt-2 leading-relaxed">
             Fila de filmes sorteados aleatoriamente para assistir
           </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <AdminDrawnSection initialDrawnItems={initialItems} />
-          <DrawButton />
         </div>
       </div>
 
@@ -57,10 +49,29 @@ export default async function DrawnMoviesPage() {
         </div>
       </div>
 
-      {/* Lista — ocupa a largura máxima do container (grid 1→2→3→4 colunas) */}
+      {/* Ações + lista em streaming (um único fetch) */}
+      <Suspense fallback={<DrawnListSkeleton />}>
+        <DrawnPageContent />
+      </Suspense>
+    </div>
+  );
+}
+
+async function DrawnPageContent() {
+  const session = await auth();
+  const initialItems = session?.accessToken
+    ? await getDrawnMovies(session.accessToken).catch(() => [])
+    : [];
+
+  return (
+    <>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
+        <AdminDrawnSection initialDrawnItems={initialItems} />
+        <DrawButton />
+      </div>
       <div className="w-full">
         <DrawnMoviesList initialItems={initialItems} />
       </div>
-    </div>
+    </>
   );
 }

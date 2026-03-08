@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { removeDrawnMovieAction } from "@/actions/movie-actions";
+import { getTmdbPosterUrl } from "@/lib/tmdb-images";
 import type { DrawnMovie } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -77,7 +78,7 @@ export function RemoveFromDrawnModal({
                 <div className="relative w-8 h-12 rounded overflow-hidden bg-surface-raised shrink-0">
                   {item.movie.posterPath ? (
                     <Image
-                      src={item.movie.posterPath}
+                      src={getTmdbPosterUrl(item.movie.posterPath, "w300") ?? item.movie.posterPath}
                       alt=""
                       fill
                       sizes="32px"

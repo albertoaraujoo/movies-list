@@ -1,51 +1,35 @@
+import { Suspense } from "react";
 import { Metadata } from "next";
-import { auth } from "@/auth";
-import { getMovies } from "@/lib/api";
-import { MovieGrid } from "@/components/movie-grid";
 import { AddMovieDialog } from "@/components/add-movie-dialog";
 import { DrawButton } from "@/components/draw-button";
 import { ProfilePanel } from "@/components/dashboard/profile-panel";
 import { AdminDeduplicateButton } from "@/components/dashboard/admin-deduplicate-button";
+import { MovieListSection } from "./movie-list-section";
+import { MovieGridSkeleton } from "./movie-grid-skeleton";
+import { ProfileSkeleton } from "./profile-skeleton";
 
 export const metadata: Metadata = {
   title: "Dashboard",
 };
 
-export default async function DashboardPage() {
-  const session = await auth();
-  const initialData = session?.accessToken
-    ? await getMovies({ page: 1, limit: 24 }, session.accessToken).catch(
-        () => null
-      )
-    : null;
-
+export default function DashboardPage() {
   return (
     <div className="space-y-8">
-      {/* Painel de perfil */}
-      <ProfilePanel />
+      <Suspense fallback={<ProfileSkeleton />}>
+        <ProfilePanel />
+      </Suspense>
 
-      {/* Cabeçalho com ações */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display tracking-wider uppercase text-[clamp(1.75rem,4vw,3rem)] leading-none text-foreground">
-            Minha Lista
-          </h1>
-          <p className="font-sans text-sm text-muted-foreground mt-1.5 leading-relaxed">
-            {initialData?.meta
-              ? `${initialData.meta.total} ${initialData.meta.total === 1 ? "filme" : "filmes"} na sua lista`
-              : "Gerencie os filmes que você quer assistir"}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 flex-wrap">
-          <DrawButton />
-          <AddMovieDialog />
-          <AdminDeduplicateButton />
-        </div>
+      {/* Ações visíveis imediatamente */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3 flex-wrap">
+        <DrawButton />
+        <AddMovieDialog />
+        <AdminDeduplicateButton />
       </div>
 
-      {/* Grid de filmes — initialData = todos os filmes para primeiro paint com lista visível */}
-      <MovieGrid initialData={initialData} />
+      {/* Título, contador e grid em streaming */}
+      <Suspense fallback={<MovieGridSkeleton />}>
+        <MovieListSection />
+      </Suspense>
     </div>
   );
 }
