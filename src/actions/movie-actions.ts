@@ -6,6 +6,7 @@ import {
   addMovieToDrawn,
   addMovieToDrawnFromTmdb,
   createMovie,
+  deduplicateMovies,
   deleteMovie,
   drawMovie,
   getMovie,
@@ -107,4 +108,12 @@ export async function syncMovieTmdbAction(id: string) {
   revalidatePath(`/movies/${id}`);
   // Refetch do filme completo (o sync pode retornar payload mínimo; GET traz tudo)
   return await getMovie(id, token);
+}
+
+export async function deduplicateMoviesAction() {
+  const token = await getToken();
+  const result = await deduplicateMovies(token);
+  revalidatePath("/");
+  revalidatePath("/drawn");
+  return result;
 }

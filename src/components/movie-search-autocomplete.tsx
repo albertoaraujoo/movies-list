@@ -81,11 +81,16 @@ export function MovieSearchAutocomplete({
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => results.length > 0 && setIsOpen(true)}
+          onFocus={() => {
+            // Não reabrir se o valor atual corresponde a um resultado (ex.: seleção recente)
+            if (results.length > 0 && !results.some((r) => r.title === query)) {
+              setIsOpen(true);
+            }
+          }}
           placeholder={placeholder}
           autoComplete="off"
           className={cn(
-            "w-full pl-10 pr-10 py-2.5 rounded-xl text-sm",
+            "w-full pl-10 pr-10 py-2.5 rounded-xl text-base",
             "bg-surface-raised border border-border",
             "text-foreground placeholder:text-muted-foreground",
             "focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20",
