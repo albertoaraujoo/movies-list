@@ -6,6 +6,7 @@ import { Shuffle, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { drawMovieAction } from "@/actions/movie-actions";
+import { getTmdbPosterUrl } from "@/lib/tmdb-images";
 import { cn } from "@/lib/utils";
 import type { DrawnMovie } from "@/lib/types";
 
@@ -131,7 +132,7 @@ export function DrawButton({ onDrawn, disabled }: DrawButtonProps) {
               <div style={{ aspectRatio: "2/3" }}>
                 {revealedMovie.movie.posterPath ? (
                   <Image
-                    src={revealedMovie.movie.posterPath}
+                    src={getTmdbPosterUrl(revealedMovie.movie.posterPath, "w500") ?? revealedMovie.movie.posterPath}
                     alt={revealedMovie.movie.title}
                     fill
                     sizes="128px"

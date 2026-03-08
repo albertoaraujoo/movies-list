@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, Filter, X, SlidersHorizontal } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -47,6 +47,7 @@ function getDisplayList(res: GetMoviesResponse | undefined, filter: WatchedFilte
 export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps) {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
+  const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [watchedFilter, setWatchedFilter] = useState<WatchedFilter>("all");
@@ -108,7 +109,7 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setPage(1);
+                startTransition(() => setPage(1));
               }}
               placeholder="Buscar filmes..."
               className="text-base pl-10 glass border-border focus-visible:border-primary/50 bg-transparent"
@@ -116,7 +117,10 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
             {search && (
               <button
                 aria-label="Limpar busca"
-                onClick={() => setSearch("")}
+                onClick={() => {
+                  setSearch("");
+                  startTransition(() => setPage(1));
+                }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="size-4" />
@@ -152,8 +156,10 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
                   <button
                     key={key}
                     onClick={() => {
-                      setWatchedFilter(key);
-                      setPage(1);
+                      startTransition(() => {
+                        setWatchedFilter(key);
+                        setPage(1);
+                      });
                     }}
                     className={cn(
                       "px-3 py-1.5 rounded-full transition-all duration-200 border",
@@ -183,9 +189,11 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
               variant="secondary"
               className="flex items-center gap-1 cursor-pointer hover:bg-destructive/20"
               onClick={() => {
-                setSearch("");
-                setWatchedFilter("all");
-                setPage(1);
+                startTransition(() => {
+                  setSearch("");
+                  setWatchedFilter("all");
+                  setPage(1);
+                });
               }}
             >
               <Filter className="size-3" />
@@ -227,12 +235,13 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4"
         >
           <AnimatePresence mode="popLayout">
-            {movies.map((movie) => (
+            {movies.map((movie, index) => (
               <MovieCard
                 key={movie.id}
                 movie={movie}
                 onDeleted={handleMovieDeleted}
                 onUpdated={handleMovieUpdated}
+                priority={index < 8}
               />
             ))}
           </AnimatePresence>
@@ -245,8 +254,8 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
           <Button
             variant="outline"
             size="sm"
-            disabled={page === 1}
-            onClick={() => setPage((p) => p - 1)}
+            disabled={page === 1 || isPending}
+            onClick={() => startTransition(() => setPage((p) => Math.max(1, p - 1)))}
             className="glass border-border"
           >
             Anterior
@@ -257,8 +266,8 @@ export function MovieGrid({ initialData: initialDataFromServer }: MovieGridProps
           <Button
             variant="outline"
             size="sm"
-            disabled={page === totalPages}
-            onClick={() => setPage((p) => p + 1)}
+            disabled={page === totalPages || isPending}
+            onClick={() => startTransition(() => setPage((p) => Math.min(totalPages, p + 1)))}
             className="glass border-border"
           >
             Próxima

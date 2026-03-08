@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Search, Loader2, Film } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getTmdbPosterUrl } from "@/lib/tmdb-images";
 import { cn } from "@/lib/utils";
 
 interface TmdbResult {
@@ -142,7 +143,7 @@ export function MovieSearchAutocomplete({
                     <div className="relative shrink-0 w-9 h-14 rounded-md overflow-hidden bg-surface-raised border border-border">
                       {movie.posterPath ? (
                         <Image
-                          src={movie.posterPath}
+                          src={getTmdbPosterUrl(movie.posterPath, "w185") ?? movie.posterPath}
                           alt={movie.title}
                           fill
                           sizes="36px"

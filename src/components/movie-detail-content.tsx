@@ -18,6 +18,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { syncMovieTmdbAction, updateMovieAction } from "@/actions/movie-actions";
+import { getTmdbPosterUrl } from "@/lib/tmdb-images";
 import type { Movie, WatchProvider } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -153,7 +154,7 @@ export function MovieDetailContent({ movie }: MovieDetailContentProps) {
         >
           {currentMovie.posterPath ? (
             <Image
-              src={currentMovie.posterPath}
+              src={getTmdbPosterUrl(currentMovie.posterPath, "w500") ?? currentMovie.posterPath}
               alt={`Poster de ${currentMovie.title}`}
               fill
               sizes="224px"

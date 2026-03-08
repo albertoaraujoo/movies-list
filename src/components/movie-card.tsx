@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { deleteMovieAction, markWatchedAction } from "@/actions/movie-actions";
+import { getTmdbPosterUrl } from "@/lib/tmdb-images";
 import type { Movie } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -31,9 +32,11 @@ interface MovieCardProps {
   movie: Movie;
   onDeleted?: (id: string) => void;
   onUpdated?: (movie: Movie) => void;
+  /** Primeiros cards acima da dobra: eager; demais: lazy */
+  priority?: boolean;
 }
 
-export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
+export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -93,11 +96,12 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
         >
           {movie.posterPath ? (
             <Image
-              src={movie.posterPath}
+              src={getTmdbPosterUrl(movie.posterPath, "w300") ?? movie.posterPath}
               alt={`Poster de ${movie.title}`}
               fill
               sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 18vw"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
+              loading={priority ? "eager" : "lazy"}
               unoptimized
             />
           ) : (
