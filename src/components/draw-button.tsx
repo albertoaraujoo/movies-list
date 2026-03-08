@@ -136,6 +136,7 @@ export function DrawButton({ onDrawn, disabled }: DrawButtonProps) {
                     fill
                     sizes="128px"
                     className="object-cover"
+                    unoptimized
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-surface-raised">

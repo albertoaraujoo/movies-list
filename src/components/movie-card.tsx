@@ -98,6 +98,7 @@ export function MovieCard({ movie, onDeleted, onUpdated }: MovieCardProps) {
             fill
             sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 18vw"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
+            unoptimized
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-raised px-3">

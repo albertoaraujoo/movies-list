@@ -64,6 +64,7 @@ function ProviderList({
                     width={24}
                     height={24}
                     className="object-contain"
+                    unoptimized
                   />
                 </div>
               ) : (
@@ -158,6 +159,7 @@ export function MovieDetailContent({ movie }: MovieDetailContentProps) {
               sizes="224px"
               className="object-cover"
               priority
+              unoptimized
             />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4">

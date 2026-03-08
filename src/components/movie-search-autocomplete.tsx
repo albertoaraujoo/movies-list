@@ -131,6 +131,7 @@ export function MovieSearchAutocomplete({
                           fill
                           sizes="36px"
                           className="object-cover"
+                          unoptimized
                         />
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center">

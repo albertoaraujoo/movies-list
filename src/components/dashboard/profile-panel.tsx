@@ -33,6 +33,7 @@ export async function ProfilePanel() {
               fill
               sizes="56px"
               className="object-cover"
+              unoptimized
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gold/10">
