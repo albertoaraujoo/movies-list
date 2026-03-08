@@ -71,6 +71,7 @@
   --accent-foreground: oklch(0.852 0.199 91.936);
 
   --destructive: oklch(0.55 0.22 25);
+  --success: oklch(0.65 0.19 145);
 
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 10%);
@@ -181,5 +182,21 @@
     letter-spacing: 0.03em;
     text-transform: uppercase;
     line-height: 0.95;
+  }
+
+  /* Toasts: sucesso (verde) e erro (vermelho) para distinguir facilmente */
+  [data-sonner-toast][data-type="success"] {
+    border-left: 4px solid var(--success);
+    background: oklch(0.65 0.19 145 / 0.06);
+  }
+  [data-sonner-toast][data-type="success"] [data-icon] {
+    color: var(--success);
+  }
+  [data-sonner-toast][data-type="error"] {
+    border-left: 4px solid var(--destructive);
+    background: oklch(0.55 0.22 25 / 0.06);
+  }
+  [data-sonner-toast][data-type="error"] [data-icon] {
+    color: var(--destructive);
   }
 }

@@ -105,9 +105,13 @@ async function apiFetch<T>(
       statusCode: res.status,
       message: res.statusText,
     }));
-    throw new Error(
-      Array.isArray(err.message) ? err.message.join(", ") : err.message
-    );
+    const message =
+      typeof err.message === "string"
+        ? err.message
+        : Array.isArray(err.message)
+          ? err.message.join(" ")
+          : String(err.message ?? res.statusText);
+    throw new Error(message);
   }
 
   if (res.status === 204) return undefined as T;

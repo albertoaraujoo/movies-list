@@ -83,7 +83,12 @@ export function AddMovieDialog({ onAdded }: AddMovieDialogProps) {
         setOpen(false);
         resetForm();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Erro ao adicionar filme";
+        const msg =
+          err instanceof Error
+            ? err.message
+            : typeof err === "object" && err !== null && "message" in err && typeof (err as { message: unknown }).message === "string"
+              ? (err as { message: string }).message
+              : "Erro ao adicionar filme";
         toast.error(msg);
       }
     });

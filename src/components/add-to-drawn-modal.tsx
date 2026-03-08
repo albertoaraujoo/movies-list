@@ -74,7 +74,12 @@ export function AddToDrawnModal({ open, onOpenChange }: AddToDrawnModalProps) {
         onOpenChange(false);
         setSelectedId(null);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Erro ao adicionar";
+        const msg =
+          err instanceof Error
+            ? err.message
+            : typeof err === "object" && err !== null && "message" in err && typeof (err as { message: unknown }).message === "string"
+              ? (err as { message: string }).message
+              : "Erro ao adicionar";
         toast.error(msg);
       }
     });
@@ -97,7 +102,12 @@ export function AddToDrawnModal({ open, onOpenChange }: AddToDrawnModalProps) {
         onOpenChange(false);
         setSelectedTmdb(null);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Erro ao adicionar";
+        const msg =
+          err instanceof Error
+            ? err.message
+            : typeof err === "object" && err !== null && "message" in err && typeof (err as { message: unknown }).message === "string"
+              ? (err as { message: string }).message
+              : "Erro ao adicionar";
         toast.error(msg);
       }
     });

@@ -32,6 +32,7 @@ export function MovieSearchAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const skipNextOpenRef = useRef(false);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -46,7 +47,16 @@ export function MovieSearchAutocomplete({
         const res = await fetch(`/api/tmdb/search?q=${encodeURIComponent(query)}`);
         const data: TmdbResult[] = await res.json();
         setResults(data);
-        setIsOpen(data.length > 0);
+        if (data.length > 0) {
+          if (skipNextOpenRef.current) {
+            skipNextOpenRef.current = false;
+            setIsOpen(false);
+          } else {
+            setIsOpen(true);
+          }
+        } else {
+          setIsOpen(false);
+        }
       } catch {
         setResults([]);
       } finally {
@@ -69,6 +79,7 @@ export function MovieSearchAutocomplete({
 
   function handleSelect(movie: TmdbResult) {
     onSelect(movie);
+    skipNextOpenRef.current = true;
     setQuery(movie.title);
     setIsOpen(false);
   }
