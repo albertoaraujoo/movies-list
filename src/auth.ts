@@ -1,6 +1,6 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Google from "next-auth/providers/google";
-import { loginWithGoogle } from "@/lib/api";
+import { loginWithGoogle, getUserProfile } from "@/lib/api";
 import type { ProfilePrivacy } from "@/lib/types";
 
 declare module "next-auth" {
@@ -46,6 +46,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       const accessToken = token["accessToken"] as string | undefined;
+
+      if (accessToken) {
+        session.accessToken = accessToken;
+
+        try {
+          const profile = await getUserProfile(accessToken);
+          session.user = {
+            ...session.user,
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            username: profile.username,
+            privacy: profile.privacy,
+          };
+          return session;
+        } catch (error) {
+          console.error("[Auth] Falha ao carregar perfil do backend:", error);
+        }
+      }
+
       const backendUser = token["backendUser"] as
         | {
             id: string;
@@ -55,10 +75,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             privacy?: ProfilePrivacy;
           }
         | undefined;
-
-      if (accessToken) {
-        session.accessToken = accessToken;
-      }
 
       if (backendUser) {
         session.user = {
