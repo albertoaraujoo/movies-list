@@ -259,6 +259,7 @@ export interface GetMoviesParams {
   year?: number;
   director?: string;
   genre?: string;
+  listId?: string;
   page?: number;
   limit?: number;
 }

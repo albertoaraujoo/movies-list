@@ -2,16 +2,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { Film, Eye, User } from "lucide-react";
 import { auth } from "@/auth";
-import { getMovies } from "@/lib/api";
+import { getLists, getMovies } from "@/lib/api";
 
 export async function ProfilePanel() {
   const session = await auth();
   if (!session?.user) return null;
 
-  const moviesResponse = await getMovies(
-    { page: 1, limit: 1 },
-    session.accessToken
-  ).catch(() => null);
+  const lists = await getLists(session.accessToken).catch(() => []);
+  const defaultListId = lists.find((list) => list.isDefault)?.id;
+
+  const moviesResponse =
+    defaultListId != null
+      ? await getMovies(
+          { page: 1, limit: 1, listId: defaultListId },
+          session.accessToken
+        ).catch(() => null)
+      : null;
 
   const watchedCount = moviesResponse?.meta?.watchedTotal ?? 0;
   const unwatchedCount = moviesResponse?.meta?.unwatchedTotal ?? 0;

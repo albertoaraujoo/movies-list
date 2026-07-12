@@ -15,7 +15,6 @@ import {
   Info,
   Star,
   Clock,
-  ListMinus,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -338,7 +337,7 @@ export function MovieCard({
                     onClick={handleRemoveFromList}
                     className="text-destructive focus:text-destructive"
                   >
-                    <ListMinus className="size-4" /> Remover da lista
+                    <Trash2 className="size-4" /> Remover da lista
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem

@@ -10,7 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
-  ListMinus,
+  Trash2,
   Star,
   User2,
 } from "lucide-react";
@@ -189,16 +189,20 @@ export function ListRankedRow({
         >
           {movie.watched ? <CheckCircle2 className="size-4 text-primary" /> : <CheckCircle2 className="size-4" />}
         </Button>
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
           aria-label={`Remover ${movie.title} da lista`}
           onClick={handleRemoveFromList}
-          className="size-9 text-muted-foreground hover:text-destructive"
+          disabled={isPending || isReordering}
+          className={cn(
+            "inline-flex min-h-9 min-w-9 items-center justify-center rounded-full border transition-all duration-200",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50",
+            "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
+            "border-white/15 bg-black/70 text-muted-foreground hover:border-destructive/40 hover:text-destructive backdrop-blur-sm"
+          )}
         >
-          <ListMinus className="size-4" />
-        </Button>
+          <Trash2 className="size-4" />
+        </button>
         <div className="ml-1 flex flex-col gap-0.5 border-l border-border pl-2">
           <Button
             type="button"

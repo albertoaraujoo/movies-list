@@ -50,9 +50,10 @@ const WATCHED_LABELS: Record<WatchedFilterParam, string> = {
 
 interface MovieGridProps {
   initialData?: GetMoviesResponse | null;
+  listId?: string;
 }
 
-function MovieGridInner({ initialData: initialDataFromServer }: MovieGridProps) {
+function MovieGridInner({ initialData: initialDataFromServer, listId }: MovieGridProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -172,6 +173,7 @@ function MovieGridInner({ initialData: initialDataFromServer }: MovieGridProps) 
   const params: GetMoviesParams = {
     page,
     limit: 24,
+    ...(listId && { listId }),
     ...(debouncedSearch && { search: debouncedSearch }),
     ...(debouncedDirector && { director: debouncedDirector }),
     ...(genreFilter && { genre: genreFilter }),
@@ -417,6 +419,7 @@ function MovieGridInner({ initialData: initialDataFromServer }: MovieGridProps) 
               <MovieCard
                 key={movie.id}
                 movie={movie}
+                listId={listId}
                 returnPath={returnPath}
                 onDeleted={handleMovieDeleted}
                 onUpdated={handleMovieUpdated}

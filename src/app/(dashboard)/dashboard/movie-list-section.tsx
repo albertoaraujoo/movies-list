@@ -1,14 +1,21 @@
 import { auth } from "@/auth";
-import { getMovies } from "@/lib/api";
+import { getLists, getMovies } from "@/lib/api";
 import { MovieGrid } from "@/components/movie-grid";
 
 export async function MovieListSection() {
   const session = await auth();
-  const initialData =
+  const lists =
     session?.accessToken
-      ? await getMovies({ page: 1, limit: 24 }, session.accessToken).catch(
-          () => null
-        )
+      ? await getLists(session.accessToken).catch(() => [])
+      : [];
+  const defaultListId = lists.find((list) => list.isDefault)?.id;
+
+  const initialData =
+    session?.accessToken && defaultListId
+      ? await getMovies(
+          { page: 1, limit: 24, listId: defaultListId },
+          session.accessToken
+        ).catch(() => null)
       : null;
 
   return (
@@ -25,7 +32,7 @@ export async function MovieListSection() {
           </p>
         </div>
       </div>
-      <MovieGrid initialData={initialData} />
+      <MovieGrid initialData={initialData} listId={defaultListId} />
     </>
   );
 }

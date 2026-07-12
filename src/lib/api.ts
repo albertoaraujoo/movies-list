@@ -265,6 +265,7 @@ export async function getMovies(
   if (params.year) search.set("year", String(params.year));
   if (params.director) search.set("director", params.director);
   if (params.genre) search.set("genre", params.genre);
+  if (params.listId) search.set("listId", params.listId);
   if (params.page) search.set("page", String(params.page));
   if (params.limit) search.set("limit", String(params.limit));
 
