@@ -1,13 +1,29 @@
 import type {
+  ActivityResponse,
   ApiResponse,
+  BulkCreateMoviesPayload,
+  CreateListPayload,
   CreateMoviePayload,
+  UpdateListPayload,
+  CreateReviewPayload,
   DeduplicateResponse,
   DrawnMovie,
+  FollowUser,
   GetMoviesParams,
   GetMoviesResponse,
   Movie,
+  MovieList,
+  PaginatedReviews,
   PaginationMeta,
+  ProfilePrivacy,
+  PublicUserProfile,
+  Review,
+  ReviewAuthor,
+  ReviewComment,
+  ReviewThread,
   UpdateMoviePayload,
+  UpdateReviewPayload,
+  UserProfile,
   WatchProvider,
   WatchProvidersBr,
 } from "@/lib/types";
@@ -49,7 +65,7 @@ function normalizeMovie(raw: Record<string, unknown>): Movie {
     director: raw.director != null ? String(raw.director) : undefined,
     year: raw.year != null ? Number(raw.year) : undefined,
     notes: raw.notes != null ? String(raw.notes) : undefined,
-    watched: Boolean(raw.watched),
+    watched: normalizeWatched(raw.watched),
     tmdbId: raw.tmdbId != null ? Number(raw.tmdbId) : raw.tmdb_id != null ? Number(raw.tmdb_id) : undefined,
     posterPath: raw.posterPath != null ? String(raw.posterPath) : raw.poster_path != null ? String(raw.poster_path) : undefined,
     userId: String(raw.userId ?? raw.user_id),
@@ -59,6 +75,87 @@ function normalizeMovie(raw: Record<string, unknown>): Movie {
     runtime: raw.runtime != null ? Number(raw.runtime) : null,
     watchProvidersBr: watchProvidersBr ?? null,
     userRating: normalizeUserRating(raw.userRating ?? raw.user_rating),
+    genres: Array.isArray(raw.genres) ? raw.genres.map(String) : [],
+    review: raw.review ? normalizeReview(raw.review as Record<string, unknown>) : null,
+    isFavorite: Boolean(raw.isFavorite ?? raw.is_favorite),
+    drawn: normalizeDrawnRef(raw.drawn),
+  };
+}
+
+function normalizeMovieList(raw: Record<string, unknown>): MovieList {
+  const items = Array.isArray(raw.items)
+    ? raw.items.map((item) => {
+        const row = item as Record<string, unknown>;
+        const movieRaw = row.movie as Record<string, unknown> | undefined;
+        return {
+          id: String(row.id),
+          listId: String(row.listId ?? row.list_id),
+          movieId: String(row.movieId ?? row.movie_id),
+          order: Number(row.order ?? 0),
+          movie: movieRaw ? normalizeMovie(movieRaw) : ({} as Movie),
+        };
+      })
+    : undefined;
+
+  return {
+    id: String(raw.id),
+    name: String(raw.name),
+    description: raw.description != null ? String(raw.description) : null,
+    isDefault: Boolean(raw.isDefault ?? raw.is_default),
+    isFavorites: Boolean(raw.isFavorites ?? raw.is_favorites),
+    isNumbered: Boolean(raw.isNumbered ?? raw.is_numbered),
+    isRanked: Boolean(raw.isRanked ?? raw.is_ranked),
+    userId: String(raw.userId ?? raw.user_id),
+    createdAt: String(raw.createdAt ?? raw.created_at),
+    updatedAt: String(raw.updatedAt ?? raw.updated_at),
+    _count: raw._count as MovieList["_count"],
+    items,
+  };
+}
+
+function normalizeReviewAuthor(raw: unknown): ReviewAuthor | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const a = raw as Record<string, unknown>;
+  return {
+    id: String(a.id),
+    name: String(a.name),
+    username: a.username != null ? String(a.username) : null,
+    image: a.image != null ? String(a.image) : null,
+  };
+}
+
+function normalizeReviewComment(raw: Record<string, unknown>): ReviewComment {
+  return {
+    id: String(raw.id),
+    text: String(raw.text),
+    reviewId: String(raw.reviewId ?? raw.review_id),
+    userId: String(raw.userId ?? raw.user_id),
+    parentId:
+      raw.parentId != null
+        ? String(raw.parentId)
+        : raw.parent_id != null
+          ? String(raw.parent_id)
+          : null,
+    createdAt: String(raw.createdAt ?? raw.created_at),
+    updatedAt: String(raw.updatedAt ?? raw.updated_at),
+    user: normalizeReviewAuthor(raw.user)!,
+  };
+}
+
+function normalizeReview(raw: Record<string, unknown>): Review {
+  return {
+    id: String(raw.id),
+    text: String(raw.text),
+    watchedAt: raw.watchedAt != null ? String(raw.watchedAt) : raw.watched_at != null ? String(raw.watched_at) : null,
+    movieId: String(raw.movieId ?? raw.movie_id),
+    userId: String(raw.userId ?? raw.user_id),
+    createdAt: String(raw.createdAt ?? raw.created_at),
+    updatedAt: String(raw.updatedAt ?? raw.updated_at),
+    movie: raw.movie ? normalizeMovie(raw.movie as Record<string, unknown>) : undefined,
+    user: normalizeReviewAuthor(raw.user),
+    likesCount: raw.likesCount != null ? Number(raw.likesCount) : raw.likes_count != null ? Number(raw.likes_count) : undefined,
+    commentsCount: raw.commentsCount != null ? Number(raw.commentsCount) : raw.comments_count != null ? Number(raw.comments_count) : undefined,
+    likedByMe: raw.likedByMe != null ? Boolean(raw.likedByMe) : raw.liked_by_me != null ? Boolean(raw.liked_by_me) : undefined,
   };
 }
 
@@ -69,6 +166,24 @@ function normalizeUserRating(v: unknown): number | null {
   if (Number.isNaN(n) || n < 0 || n > 10) return null;
   const half = Math.round(n * 2) / 2;
   return half;
+}
+
+function normalizeWatched(v: unknown): boolean {
+  if (v === true || v === 1) return true;
+  if (v === false || v === 0 || v == null) return false;
+  if (typeof v === "string") return v.toLowerCase() === "true";
+  return Boolean(v);
+}
+
+function normalizeDrawnRef(raw: unknown): Movie["drawn"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const d = raw as Record<string, unknown>;
+  return {
+    id: String(d.id),
+    order: Number(d.order ?? 0),
+    drawnAt: String(d.drawnAt ?? d.drawn_at ?? ""),
+    movie: {} as Movie,
+  };
 }
 
 /** Em dev no cliente: usa proxy (same-origin). No servidor ou em prod: usa URL da API. */
@@ -123,13 +238,19 @@ async function apiFetch<T>(
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export async function loginWithGoogle(idToken: string) {
-  return apiFetch<{ accessToken: string; user: { id: string; email: string; name: string } }>(
-    "/auth/google",
-    {
-      method: "POST",
-      body: JSON.stringify({ idToken }),
-    }
-  );
+  return apiFetch<{
+    accessToken: string;
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      username?: string | null;
+      privacy?: ProfilePrivacy;
+    };
+  }>("/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ idToken }),
+  });
 }
 
 // ─── Movies ──────────────────────────────────────────────────────────────────
@@ -143,6 +264,7 @@ export async function getMovies(
   if (params.watched !== undefined) search.set("watched", String(params.watched));
   if (params.year) search.set("year", String(params.year));
   if (params.director) search.set("director", params.director);
+  if (params.genre) search.set("genre", params.genre);
   if (params.page) search.set("page", String(params.page));
   if (params.limit) search.set("limit", String(params.limit));
 
@@ -150,35 +272,19 @@ export async function getMovies(
   const result = await apiFetch<{
     data: Record<string, unknown>[];
     meta: PaginationMeta;
-    watched: Record<string, unknown>[];
-    unwatched: Record<string, unknown>[];
   }>(`/movies${query ? `?${query}` : ""}`, {
     token,
     next: { tags: ["movies"] },
   } as RequestInit & { token: string });
 
   const r = result as Record<string, unknown>;
-  const rawWatched = (r?.watched ?? r?.watched_list ?? []) as Record<string, unknown>[];
-  const rawUnwatched = (r?.unwatched ?? r?.unwatched_list ?? []) as Record<string, unknown>[];
   const rawData = (r?.data ?? []) as Record<string, unknown>[];
-  const rawMeta = r?.meta as PaginationMeta;
+  const rawMeta = r?.meta as PaginationMeta | undefined;
 
-  // #region agent log
-  fetch('http://127.0.0.1:7315/ingest/91794988-f3a4-4423-a884-4d00087f0612',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9dbbe4'},body:JSON.stringify({sessionId:'9dbbe4',location:'api.ts:getMovies:raw',message:'API raw response',data:{keys:Object.keys(r||{}),watchedLen:rawWatched.length,unwatchedLen:rawUnwatched.length,firstWatched:rawWatched[0]?{id:rawWatched[0].id,watched:rawWatched[0].watched}:null,firstUnwatched:rawUnwatched[0]?{id:rawUnwatched[0].id,watched:rawUnwatched[0].watched}:null},timestamp:Date.now(),hypothesisId:'H1,H2'})}).catch(()=>{});
-  // #endregion
-
-  const out = {
+  return {
     data: rawData.map((m) => normalizeMovie(m)),
     meta: rawMeta ?? { total: 0, page: 1, limit: 24, totalPages: 0 },
-    watched: rawWatched.map((m) => normalizeMovie(m)),
-    unwatched: rawUnwatched.map((m) => normalizeMovie(m)),
   };
-  // #region agent log
-  const nw = out.watched[0];
-  const nu = out.unwatched[0];
-  fetch('http://127.0.0.1:7315/ingest/91794988-f3a4-4423-a884-4d00087f0612',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9dbbe4'},body:JSON.stringify({sessionId:'9dbbe4',location:'api.ts:getMovies:normalized',message:'After normalize',data:{firstWatched:nw?{id:nw.id,watched:nw.watched}:null,firstUnwatched:nu?{id:nu.id,watched:nu.watched}:null},timestamp:Date.now(),hypothesisId:'H4,H5'})}).catch(()=>{});
-  // #endregion
-  return out;
 }
 
 export async function getMovie(id: string, token: string): Promise<Movie> {
@@ -297,6 +403,284 @@ export async function deduplicateMovies(token: string): Promise<DeduplicateRespo
       }))
     : [];
   return { removedCount, groups };
+}
+
+export async function backfillGenres(
+  token: string
+): Promise<{ updated: number; remaining: number }> {
+  const raw = await apiFetch<Record<string, unknown>>("/movies/backfill-genres", {
+    method: "POST",
+    token,
+  } as RequestInit & { token: string });
+  return {
+    updated: Number(raw?.updated ?? 0),
+    remaining: Number(raw?.remaining ?? 0),
+  };
+}
+
+export async function bulkCreateMovies(
+  payload: BulkCreateMoviesPayload,
+  token: string
+): Promise<Movie[]> {
+  const raw = await apiFetch<Record<string, unknown>[]>("/movies/bulk", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    token,
+  } as RequestInit & { token: string });
+  return (raw ?? []).map((m) => normalizeMovie(m));
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+
+export async function getUserProfile(token: string): Promise<UserProfile> {
+  return apiFetch<UserProfile>("/users/profile", { token } as RequestInit & { token: string });
+}
+
+export async function checkUsername(username: string, token?: string) {
+  return apiFetch<{ available: boolean }>(
+    `/users/check-username/${encodeURIComponent(username)}`,
+    token ? ({ token } as RequestInit & { token: string }) : {}
+  );
+}
+
+export async function updateUsername(username: string, token: string) {
+  return apiFetch<UserProfile>("/users/update-username", {
+    method: "PUT",
+    body: JSON.stringify({ username }),
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function updateProfile(
+  payload: { name?: string; username?: string },
+  token: string
+) {
+  return apiFetch<UserProfile>("/users/profile", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function updatePrivacy(privacy: ProfilePrivacy, token: string) {
+  return apiFetch<UserProfile>("/users/privacy", {
+    method: "PUT",
+    body: JSON.stringify({ privacy }),
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function getPublicProfile(username: string, token: string) {
+  return apiFetch<PublicUserProfile>(
+    `/users/by-username/${encodeURIComponent(username)}`,
+    { token } as RequestInit & { token: string }
+  );
+}
+
+export async function followUser(id: string, token: string) {
+  return apiFetch<void>(`/users/follow/${id}`, {
+    method: "POST",
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function unfollowUser(id: string, token: string) {
+  return apiFetch<void>(`/users/unfollow/${id}`, {
+    method: "POST",
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function getFollowers(userId: string, token: string, page = 1) {
+  return apiFetch<{ data: FollowUser[]; meta: PaginationMeta }>(
+    `/users/${userId}/followers?page=${page}`,
+    { token } as RequestInit & { token: string }
+  );
+}
+
+export async function getFollowing(userId: string, token: string, page = 1) {
+  return apiFetch<{ data: FollowUser[]; meta: PaginationMeta }>(
+    `/users/${userId}/following?page=${page}`,
+    { token } as RequestInit & { token: string }
+  );
+}
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+
+export async function getWatchedReviews(token: string, page = 1): Promise<PaginatedReviews> {
+  const raw = await apiFetch<{ data: Record<string, unknown>[]; meta: PaginationMeta }>(
+    `/reviews/watched?page=${page}`,
+    { token } as RequestInit & { token: string }
+  );
+  return {
+    data: (raw.data ?? []).map((r) => normalizeReview(r)),
+    meta: raw.meta,
+  };
+}
+
+export async function getReviewByMovie(movieId: string, token: string) {
+  return apiFetch<Review | null>(`/reviews/movie/${movieId}`, {
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function createReview(payload: CreateReviewPayload, token: string) {
+  const raw = await apiFetch<Record<string, unknown>>("/reviews", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    token,
+  } as RequestInit & { token: string });
+  return normalizeReview(raw);
+}
+
+export async function updateReview(id: string, payload: UpdateReviewPayload, token: string) {
+  const raw = await apiFetch<Record<string, unknown>>(`/reviews/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    token,
+  } as RequestInit & { token: string });
+  return normalizeReview(raw);
+}
+
+export async function deleteReview(id: string, token: string) {
+  return apiFetch<void>(`/reviews/${id}`, {
+    method: "DELETE",
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function getReviewThread(reviewId: string, token: string): Promise<ReviewThread> {
+  const raw = await apiFetch<Record<string, unknown>>(`/reviews/${reviewId}/thread`, {
+    token,
+  } as RequestInit & { token: string });
+  return {
+    review: normalizeReview(raw.review as Record<string, unknown>),
+    comments: Array.isArray(raw.comments)
+      ? raw.comments.map((c) => normalizeReviewComment(c as Record<string, unknown>))
+      : [],
+  };
+}
+
+export async function getPublicReviews(username: string, token: string, page = 1): Promise<PaginatedReviews> {
+  const raw = await apiFetch<{ data: Record<string, unknown>[]; meta: PaginationMeta }>(
+    `/reviews/public/${encodeURIComponent(username)}?page=${page}`,
+    { token } as RequestInit & { token: string }
+  );
+  return {
+    data: (raw.data ?? []).map((r) => normalizeReview(r)),
+    meta: raw.meta,
+  };
+}
+
+export async function toggleReviewLike(reviewId: string, token: string) {
+  return apiFetch<{ liked: boolean; likesCount: number }>(`/reviews/${reviewId}/likes`, {
+    method: "POST",
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function createReviewComment(
+  reviewId: string,
+  payload: { text: string; parentId?: string },
+  token: string
+) {
+  const raw = await apiFetch<Record<string, unknown>>(`/reviews/${reviewId}/comments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    token,
+  } as RequestInit & { token: string });
+  return normalizeReviewComment(raw);
+}
+
+export async function deleteReviewComment(commentId: string, token: string) {
+  return apiFetch<void>(`/reviews/comments/${commentId}`, {
+    method: "DELETE",
+    token,
+  } as RequestInit & { token: string });
+}
+
+// ─── Lists ───────────────────────────────────────────────────────────────────
+
+export async function getLists(token: string): Promise<MovieList[]> {
+  return apiFetch<MovieList[]>("/lists", { token } as RequestInit & { token: string });
+}
+
+export async function getList(id: string, token: string): Promise<MovieList> {
+  const raw = await apiFetch<Record<string, unknown>>(`/lists/${id}`, {
+    token,
+  } as RequestInit & { token: string });
+  return normalizeMovieList(raw);
+}
+
+export async function createList(payload: CreateListPayload, token: string) {
+  return apiFetch<MovieList>("/lists", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function updateList(id: string, payload: UpdateListPayload, token: string) {
+  const raw = await apiFetch<Record<string, unknown>>(`/lists/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+    token,
+  } as RequestInit & { token: string });
+  return normalizeMovieList(raw);
+}
+
+export async function deleteList(id: string, token: string) {
+  return apiFetch<void>(`/lists/${id}`, {
+    method: "DELETE",
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function toggleFavorite(movieId: string, token: string) {
+  return apiFetch<{ isFavorite: boolean }>("/lists/favorites/toggle", {
+    method: "POST",
+    body: JSON.stringify({ movieId }),
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function removeMovieFromList(listId: string, movieId: string, token: string) {
+  return apiFetch<void>(`/lists/${listId}/movies/${movieId}`, {
+    method: "DELETE",
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function addMovieToList(listId: string, movieId: string, token: string) {
+  return apiFetch<void>(`/lists/${listId}/movies`, {
+    method: "POST",
+    body: JSON.stringify({ movieId }),
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function deduplicateList(listId: string, token: string) {
+  return apiFetch<{ removedCount: number }>(`/lists/${listId}/deduplicate`, {
+    method: "POST",
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function reorderList(listId: string, movieIds: string[], token: string) {
+  const raw = await apiFetch<Record<string, unknown>>(`/lists/${listId}/reorder`, {
+    method: "PATCH",
+    body: JSON.stringify({ movieIds }),
+    token,
+  } as RequestInit & { token: string });
+  return normalizeMovieList(raw);
+}
+
+// ─── Activity ────────────────────────────────────────────────────────────────
+
+export async function getActivity(token: string, scope = "all"): Promise<ActivityResponse> {
+  return apiFetch<ActivityResponse>(`/activity?scope=${scope}`, {
+    token,
+  } as RequestInit & { token: string });
 }
 
 // ─── TMDB Search (direto no cliente via API do Next.js) ──────────────────────

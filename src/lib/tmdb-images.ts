@@ -2,7 +2,7 @@
  * Tamanhos de poster TMDB (image.tmdb.org).
  * Usar w185 para thumbnails pequenos, w300 para cards/listas, w500 para detalhe/destaque.
  */
-export type TmdbPosterSize = "w185" | "w300" | "w500" | "original";
+export type TmdbPosterSize = "w92" | "w154" | "w185" | "w300" | "w500" | "original";
 
 const SIZE_REGEX = /\/t\/p\/(w\d+|original)\//;
 

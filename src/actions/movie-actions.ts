@@ -5,16 +5,19 @@ import { auth } from "@/auth";
 import {
   addMovieToDrawn,
   addMovieToDrawnFromTmdb,
+  bulkCreateMovies,
   createMovie,
   deduplicateMovies,
   deleteMovie,
   drawMovie,
   getMovie,
+  backfillGenres,
   removeDrawnMovie,
   syncMovieTmdb,
   updateMovie,
 } from "@/lib/api";
 import type {
+  BulkCreateMoviesPayload,
   CreateMoviePayload,
   DrawnMovie,
   Movie,
@@ -53,7 +56,10 @@ export async function markWatchedAction(id: string, watched: boolean) {
   const token = await getToken();
   const movie = await updateMovie(id, { watched }, token);
   revalidatePath("/");
+  revalidatePath("/dashboard");
   revalidatePath("/drawn");
+  revalidatePath("/lists");
+  revalidatePath(`/movies/${id}`);
   return movie;
 }
 
@@ -110,10 +116,39 @@ export async function syncMovieTmdbAction(id: string) {
   return await getMovie(id, token);
 }
 
+export async function bulkCreateMoviesAction(payload: BulkCreateMoviesPayload) {
+  const token = await getToken();
+  const movies = await bulkCreateMovies(payload, token);
+  revalidatePath("/");
+  revalidatePath("/dashboard");
+  return movies;
+}
+
 export async function deduplicateMoviesAction() {
   const token = await getToken();
   const result = await deduplicateMovies(token);
   revalidatePath("/");
   revalidatePath("/drawn");
   return result;
+}
+
+export async function backfillGenresAction() {
+  const token = await getToken();
+  let totalUpdated = 0;
+  let remaining = 1;
+  let guard = 0;
+
+  while (remaining > 0 && guard < 20) {
+    const result = await backfillGenres(token);
+    totalUpdated += result.updated;
+    remaining = result.remaining;
+    guard += 1;
+    if (result.updated === 0) break;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/dashboard");
+  revalidatePath("/lists");
+
+  return { updated: totalUpdated, remaining };
 }

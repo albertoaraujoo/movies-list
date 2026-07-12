@@ -1,12 +1,19 @@
 import type { NextConfig } from "next";
 
+/** Origem do NestJS para proxy em dev — NUNCA usar a mesma porta do Next. */
+function getBackendOrigin(): string {
+  const raw =
+    process.env.BACKEND_URL ??
+    process.env.NEXT_PUBLIC_API_URL ??
+    "http://127.0.0.1:3000";
+  return new URL(raw).origin;
+}
+
 const nextConfig: NextConfig = {
   async rewrites() {
     if (process.env.NODE_ENV !== "development") return [];
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) return [];
     try {
-      const origin = new URL(apiUrl).origin;
+      const origin = getBackendOrigin();
       return [
         { source: "/api/v1/:path*", destination: `${origin}/api/v1/:path*` },
       ];

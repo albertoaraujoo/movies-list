@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +14,8 @@ import {
   MoreVertical,
   Info,
   Star,
+  Clock,
+  ListMinus,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -24,30 +26,65 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { deleteMovieAction, markWatchedAction } from "@/actions/movie-actions";
+import { removeMovieFromListAction } from "@/actions/list-actions";
+import { FavoriteStarButton } from "@/components/favorite-star-button";
 import { getTmdbPosterUrl } from "@/lib/tmdb-images";
+import { buildMovieDetailHref } from "@/lib/grid-url-state";
 import type { Movie } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface MovieCardProps {
   movie: Movie;
+  listId?: string;
+  listRank?: number;
   onDeleted?: (id: string) => void;
+  onRemovedFromList?: (id: string) => void;
   onUpdated?: (movie: Movie) => void;
   /** Primeiros cards acima da dobra: eager; demais: lazy */
   priority?: boolean;
+  /** Caminho de retorno (lista + query) para preservar paginação */
+  returnPath?: string;
 }
 
-export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardProps) {
+function formatRuntime(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}min`;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
+export function MovieCard({
+  movie,
+  listId,
+  listRank,
+  onDeleted,
+  onRemovedFromList,
+  onUpdated,
+  priority,
+  returnPath,
+}: MovieCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isFavorite, setIsFavorite] = useState(Boolean(movie.isFavorite));
+  const [watched, setWatched] = useState(Boolean(movie.watched));
+
+  useEffect(() => {
+    setIsFavorite(Boolean(movie.isFavorite));
+  }, [movie.isFavorite]);
+
+  useEffect(() => {
+    setWatched(Boolean(movie.watched));
+  }, [movie.watched]);
 
   function handleToggleWatched() {
     startTransition(async () => {
       try {
-        const updated = await markWatchedAction(movie.id, !movie.watched);
+        const updated = await markWatchedAction(movie.id, !watched);
         toast.success(
-          movie.watched ? "Removido dos assistidos" : "Marcado como assistido!",
+          watched ? "Removido dos assistidos" : "Marcado como assistido!",
           { description: movie.title }
         );
+        setWatched(updated.watched);
         onUpdated?.(updated);
       } catch {
         toast.error("Erro ao atualizar filme");
@@ -67,6 +104,21 @@ export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardPr
     });
   }
 
+  function handleRemoveFromList() {
+    if (!listId) return;
+    startTransition(async () => {
+      try {
+        await removeMovieFromListAction(listId, movie.id);
+        toast.success("Removido da lista", { description: movie.title });
+        onRemovedFromList?.(movie.id);
+      } catch {
+        toast.error("Erro ao remover da lista");
+      }
+    });
+  }
+
+  const movieHref = buildMovieDetailHref(movie.id, returnPath);
+
   return (
     <motion.div
       layout
@@ -84,11 +136,11 @@ export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardPr
       {/* Wrapper do poster: badges ficam por cima (z-10) para não herdarem opacity do Link */}
       <div className="relative w-full" style={{ aspectRatio: "2/3" }}>
         <Link
-          href={`/movies/${movie.id}`}
+          href={movieHref}
           className={cn(
             "block relative w-full h-full overflow-hidden rounded-2xl cursor-pointer",
             "border transition-all duration-300",
-            movie.watched
+            watched
               ? "border-primary/30 opacity-50"
               : "border-border opacity-100 hover:border-primary/40",
             isPending && "pointer-events-none opacity-50"
@@ -141,6 +193,12 @@ export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardPr
                         <span className="truncate max-w-[80px]">{movie.director}</span>
                       </span>
                     )}
+                    {movie.runtime != null && movie.runtime > 0 && (
+                      <span className="flex items-center gap-1 font-sans text-xs text-foreground/95 leading-relaxed">
+                        <Clock className="size-3 shrink-0" />
+                        {formatRuntime(movie.runtime)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -149,15 +207,26 @@ export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardPr
         </Link>
 
         {/* Badges por cima da opacidade do poster (z-10, fora do Link) */}
-        {movie.watched && (
-          <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/95 text-primary-foreground text-xs font-semibold pointer-events-none shadow-md">
+        {listRank != null && (
+          <div className="absolute top-2 left-2 z-10 flex size-7 items-center justify-center rounded-full bg-gold/90 text-black text-xs font-bold shadow-md pointer-events-none">
+            {listRank}
+          </div>
+        )}
+
+        {watched && (
+          <div
+            className={cn(
+              "absolute z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/95 text-primary-foreground text-xs font-semibold pointer-events-none shadow-md",
+              listRank != null ? "top-2 left-11" : "top-2 left-2"
+            )}
+          >
             <CheckCircle2 className="size-3" />
             Visto
           </div>
         )}
 
-        {movie.watched && movie.userRating != null && (
-          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/85 border border-white/20 text-foreground text-xs font-semibold pointer-events-none shadow-md">
+        {watched && movie.userRating != null && (
+          <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/85 border border-white/20 text-foreground text-xs font-semibold pointer-events-none shadow-md">
             <Star className="size-3 fill-gold text-gold" />
             {Number(movie.userRating) === Math.floor(movie.userRating)
               ? String(movie.userRating)
@@ -165,8 +234,26 @@ export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardPr
           </div>
         )}
 
-        {movie.drawn && !movie.watched && (
-          <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-cinema-red/95 text-white text-xs font-semibold pointer-events-none shadow-md">
+        <div className="absolute top-2 right-2 z-20">
+          <FavoriteStarButton
+            movieId={movie.id}
+            isFavorite={isFavorite}
+            onToggled={(next) => {
+              setIsFavorite(next);
+              onUpdated?.({ ...movie, isFavorite: next });
+            }}
+            size="sm"
+            className="min-h-9 min-w-9"
+          />
+        </div>
+
+        {movie.drawn && !watched && (
+          <div
+            className={cn(
+              "absolute z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-cinema-red/95 text-white text-xs font-semibold pointer-events-none shadow-md",
+              listRank != null ? "top-2 left-11" : "top-2 left-2"
+            )}
+          >
             🎲 Sorteado
           </div>
         )}
@@ -182,19 +269,19 @@ export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardPr
             {/* Visto / Não visto — tons de amarelo do projeto: visto = check, não visto = olho */}
             <button
               type="button"
-              aria-label={movie.watched ? "Desmarcar assistido" : "Marcar como assistido"}
+              aria-label={watched ? "Desmarcar assistido" : "Marcar como assistido"}
               onClick={handleToggleWatched}
               disabled={isPending}
               className={cn(
                 "flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border transition-all duration-200",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
-                movie.watched
+                watched
                   ? "border-primary bg-primary text-primary-foreground hover:brightness-110 focus-visible:ring-primary/50"
                   : "border-gold bg-gold/20 text-gold hover:bg-gold/30 focus-visible:ring-gold/50"
               )}
             >
-              {movie.watched ? (
+              {watched ? (
                 <CheckCircle2 className="size-4" />
               ) : (
                 <Eye className="size-4" />
@@ -217,16 +304,16 @@ export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardPr
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="border-border bg-background shadow-lg">
                 <DropdownMenuItem asChild>
-                  <Link href={`/movies/${movie.id}`}>
+                  <Link href={movieHref}>
                     <Info className="size-4" />
                     Ver detalhes
                   </Link>
                 </DropdownMenuItem>
-                {movie.watched && (
+                {watched && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href={`/movies/${movie.id}`}>
+                      <Link href={movieHref}>
                         <Star className="size-4" />
                         Atribuir nota
                       </Link>
@@ -235,7 +322,7 @@ export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardPr
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleToggleWatched}>
-                  {movie.watched ? (
+                  {watched ? (
                     <>
                       <EyeOff className="size-4" /> Desmarcar assistido
                     </>
@@ -246,20 +333,35 @@ export function MovieCard({ movie, onDeleted, onUpdated, priority }: MovieCardPr
                   )}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleDelete}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="size-4" /> Remover
-                </DropdownMenuItem>
+                {listId ? (
+                  <DropdownMenuItem
+                    onClick={handleRemoveFromList}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <ListMinus className="size-4" /> Remover da lista
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={handleDelete}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="size-4" /> Remover
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
-        {movie.year && (
-          <p className="font-sans text-[0.65rem] text-muted-foreground leading-relaxed">
-            {movie.year}
-          </p>
+        {(movie.year || (movie.runtime != null && movie.runtime > 0)) && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-sans text-[0.65rem] text-muted-foreground leading-relaxed">
+            {movie.year && <span>{movie.year}</span>}
+            {movie.runtime != null && movie.runtime > 0 && (
+              <span className="flex items-center gap-1">
+                <Clock className="size-3 shrink-0" />
+                {formatRuntime(movie.runtime)}
+              </span>
+            )}
+          </div>
         )}
       </div>
     </motion.div>

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Film, Eye, User } from "lucide-react";
 import { auth } from "@/auth";
 import { getMovies } from "@/lib/api";
@@ -12,13 +13,12 @@ export async function ProfilePanel() {
     session.accessToken
   ).catch(() => null);
 
-  const totalMovies = moviesResponse?.meta?.total ?? 0;
-  const watchedCount = moviesResponse?.watched?.length ?? 0;
-  const unwatchedCount = moviesResponse?.unwatched?.length ?? 0;
+  const watchedCount = moviesResponse?.meta?.watchedTotal ?? 0;
+  const unwatchedCount = moviesResponse?.meta?.unwatchedTotal ?? 0;
 
   const STATS = [
-    { label: "Na lista", value: unwatchedCount, icon: Film, color: "text-gold" },
-    { label: "Assistidos", value: watchedCount, icon: Eye, color: "text-emerald-400" },
+    { label: "Na lista", value: unwatchedCount, icon: Film, color: "text-gold", href: "/dashboard" as const },
+    { label: "Assistidos", value: watchedCount, icon: Eye, color: "text-emerald-400", href: "/watched" as const },
   ];
 
   return (
@@ -57,10 +57,11 @@ export async function ProfilePanel() {
 
       {/* Stats badges */}
         <div className="flex items-center gap-2 flex-wrap ml-auto">
-        {STATS.map(({ label, value, icon: Icon, color }) => (
-          <div
+        {STATS.map(({ label, value, icon: Icon, color, href }) => (
+          <Link
             key={label}
-            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl glass border border-white/6"
+            href={href}
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl glass border border-white/6 hover:border-gold/30 transition-colors"
           >
             <Icon className={`size-4 ${color} shrink-0`} />
             <div>
@@ -71,7 +72,7 @@ export async function ProfilePanel() {
                 {label}
               </p>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
