@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { User } from "lucide-react";
+import { ProfileSocialStats } from "@/components/profile/profile-social-stats";
 import type { PublicUserProfile, UserProfile } from "@/lib/types";
 
 interface ProfileHeaderProps {
@@ -39,26 +39,24 @@ export function ProfileHeader({ profile, isOwn }: ProfileHeaderProps) {
         {"username" in profile && profile.username && (
           <p className="font-sans text-sm text-gold">@{profile.username}</p>
         )}
+        {profile.bio && (
+          <p className="font-sans text-sm text-muted-foreground whitespace-pre-wrap break-words max-w-prose">
+            {profile.bio}
+          </p>
+        )}
         {isOwn && "email" in profile && (
           <p className="font-sans text-xs text-muted-foreground truncate">{profile.email}</p>
         )}
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-end">
-        <StatBadge label="Assistidos" value={profile.watchedMovies} />
-        <StatBadge label="Listas" value={profile.listsCount} />
-        <StatBadge label="Seguidores" value={profile.followersCount} />
-        <StatBadge label="Seguindo" value={profile.followingCount} />
-      </div>
-    </div>
-  );
-}
-
-function StatBadge({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex flex-col items-center px-3 py-2 rounded-xl border border-white/6 bg-surface-raised/50 min-w-[72px]">
-      <span className="font-display text-lg leading-none text-foreground">{value}</span>
-      <span className="font-sans text-[0.65rem] text-muted-foreground mt-0.5">{label}</span>
+      <ProfileSocialStats
+        userId={profile.id}
+        username={"username" in profile ? profile.username : null}
+        followersCount={profile.followersCount}
+        followingCount={profile.followingCount}
+        watchedMovies={profile.watchedMovies}
+        listsCount={profile.listsCount}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Film, Shuffle, LogOut, User, Activity } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { UserSearch } from "@/components/users/user-search";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,9 +76,10 @@ export function Navigation() {
             })}
           </nav>
 
-          {/* User menu */}
+          {/* User search + menu */}
           {session?.user && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto sm:ml-0">
+              <UserSearch />
               <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

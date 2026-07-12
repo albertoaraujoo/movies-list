@@ -9,6 +9,7 @@ import {
   getFollowing,
   getPublicProfile,
   getUserProfile,
+  searchUsers,
   unfollowUser,
   updatePrivacy,
   updateProfile,
@@ -39,7 +40,11 @@ export async function updateUsernameAction(username: string) {
   return profile;
 }
 
-export async function updateProfileAction(payload: { name?: string; username?: string }) {
+export async function updateProfileAction(payload: {
+  name?: string;
+  username?: string;
+  bio?: string;
+}) {
   const token = await getToken();
   const profile = await updateProfile(payload, token);
   revalidatePath("/");
@@ -79,12 +84,17 @@ export async function unfollowUserAction(userId: string) {
   revalidatePath("/notifications");
 }
 
-export async function getFollowersAction(userId: string, page = 1) {
+export async function getFollowersAction(userId: string, page = 1, limit = 20) {
   const token = await getToken();
-  return getFollowers(userId, token, page);
+  return getFollowers(userId, token, page, limit);
 }
 
-export async function getFollowingAction(userId: string, page = 1) {
+export async function getFollowingAction(userId: string, page = 1, limit = 20) {
   const token = await getToken();
-  return getFollowing(userId, token, page);
+  return getFollowing(userId, token, page, limit);
+}
+
+export async function searchUsersAction(query: string, limit = 10) {
+  const token = await getToken();
+  return searchUsers(query, token, limit);
 }

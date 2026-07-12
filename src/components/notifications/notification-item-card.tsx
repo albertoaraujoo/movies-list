@@ -16,10 +16,11 @@ import {
 
 interface NotificationItemCardProps {
   notification: NotificationItem;
+  compact?: boolean;
   onUpdate?: () => void;
 }
 
-export function NotificationItemCard({ notification, onUpdate }: NotificationItemCardProps) {
+export function NotificationItemCard({ notification, compact, onUpdate }: NotificationItemCardProps) {
   const [isPending, startTransition] = useTransition();
   const { actor } = notification;
   const profileHref = actor.username ? `/users/${actor.username}` : "/dashboard";
@@ -59,8 +60,9 @@ export function NotificationItemCard({ notification, onUpdate }: NotificationIte
       href={profileHref}
       onClick={handleMarkRead}
       className={cn(
-        "flex items-start gap-3 p-4 rounded-2xl glass border transition-colors hover:border-gold/20",
-        isUnread ? "border-gold/30 bg-gold/5" : "border-white/6"
+        "flex items-start gap-3 rounded-2xl border transition-colors hover:border-gold/20",
+        compact ? "p-3 bg-neutral-900 border-white/6" : "p-4 glass",
+        isUnread ? "border-gold/30 bg-gold/5" : compact ? "border-white/6" : "border-white/6"
       )}
       data-slot="notification-item"
     >

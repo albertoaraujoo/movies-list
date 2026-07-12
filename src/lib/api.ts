@@ -26,6 +26,7 @@ import type {
   UpdateMoviePayload,
   UpdateReviewPayload,
   UserProfile,
+  UserSearchResult,
   WatchProvider,
   WatchProvidersBr,
 } from "@/lib/types";
@@ -455,7 +456,7 @@ export async function updateUsername(username: string, token: string) {
 }
 
 export async function updateProfile(
-  payload: { name?: string; username?: string },
+  payload: { name?: string; username?: string; bio?: string },
   token: string
 ) {
   return apiFetch<UserProfile>("/users/profile", {
@@ -494,16 +495,23 @@ export async function unfollowUser(id: string, token: string) {
   } as RequestInit & { token: string });
 }
 
-export async function getFollowers(userId: string, token: string, page = 1) {
+export async function getFollowers(userId: string, token: string, page = 1, limit = 20) {
   return apiFetch<{ data: FollowUser[]; meta: PaginationMeta }>(
-    `/users/${userId}/followers?page=${page}`,
+    `/users/${userId}/followers?page=${page}&limit=${limit}`,
     { token } as RequestInit & { token: string }
   );
 }
 
-export async function getFollowing(userId: string, token: string, page = 1) {
+export async function getFollowing(userId: string, token: string, page = 1, limit = 20) {
   return apiFetch<{ data: FollowUser[]; meta: PaginationMeta }>(
-    `/users/${userId}/following?page=${page}`,
+    `/users/${userId}/following?page=${page}&limit=${limit}`,
+    { token } as RequestInit & { token: string }
+  );
+}
+
+export async function searchUsers(query: string, token: string, limit = 10) {
+  return apiFetch<UserSearchResult[]>(
+    `/users/search?q=${encodeURIComponent(query)}&limit=${limit}`,
     { token } as RequestInit & { token: string }
   );
 }

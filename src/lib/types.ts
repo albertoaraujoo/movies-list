@@ -9,10 +9,12 @@ export interface User {
   image?: string;
   username?: string | null;
   privacy?: ProfilePrivacy;
+  bio?: string | null;
 }
 
 export interface UserProfile extends User {
   totalMovies: number;
+  uniqueListMoviesCount: number;
   watchedMovies: number;
   listsCount: number;
   followersCount: number;
@@ -29,6 +31,7 @@ export interface PublicUserProfile {
   image: string | null;
   username: string;
   privacy: ProfilePrivacy;
+  bio: string | null;
   watchedMovies: number;
   listsCount: number;
   followersCount: number;
@@ -43,6 +46,16 @@ export interface FollowUser {
   name: string;
   username: string | null;
   image: string | null;
+  isFollowing?: boolean;
+  followsYou?: boolean;
+}
+
+export interface UserSearchResult {
+  id: string;
+  name: string;
+  username: string;
+  image: string | null;
+  isFollowing: boolean;
 }
 
 export type NotificationType = "user_followed";

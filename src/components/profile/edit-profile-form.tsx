@@ -20,6 +20,7 @@ export function EditProfileForm({ profile }: EditProfileFormProps) {
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(profile.name);
   const [username, setUsername] = useState(profile.username ?? "");
+  const [bio, setBio] = useState(profile.bio ?? "");
   const [checking, setChecking] = useState(false);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [checkError, setCheckError] = useState<string | null>(null);
@@ -29,11 +30,13 @@ export function EditProfileForm({ profile }: EditProfileFormProps) {
   const usernameChanged =
     username.trim().toLowerCase() !== (profile.username ?? "").toLowerCase();
   const nameChanged = name.trim() !== profile.name;
+  const bioChanged = bio.trim() !== (profile.bio ?? "").trim();
 
   useEffect(() => {
     setName(profile.name);
     setUsername(profile.username ?? "");
-  }, [profile.name, profile.username]);
+    setBio(profile.bio ?? "");
+  }, [profile.name, profile.username, profile.bio]);
 
   useEffect(() => {
     if (!usernameChanged || username.length < 3) {
@@ -82,7 +85,7 @@ export function EditProfileForm({ profile }: EditProfileFormProps) {
       }
     }
 
-    if (!nameChanged && !usernameChanged) {
+    if (!nameChanged && !usernameChanged && !bioChanged) {
       toast.info("Nenhuma alteração para salvar");
       return;
     }
@@ -92,6 +95,7 @@ export function EditProfileForm({ profile }: EditProfileFormProps) {
         const updated = await updateProfileAction({
           ...(nameChanged && { name: name.trim() }),
           ...(usernameChanged && { username: username.trim() }),
+          ...(bioChanged && { bio: bio.trim() }),
         });
 
         await update({
@@ -120,7 +124,7 @@ export function EditProfileForm({ profile }: EditProfileFormProps) {
           Editar perfil
         </h2>
         <p className="font-sans text-xs text-muted-foreground mt-1">
-          Atualize seu nome e username exibidos no CineList.
+          Atualize seu nome, username e bio exibidos no CineList.
         </p>
       </div>
 
@@ -203,12 +207,30 @@ export function EditProfileForm({ profile }: EditProfileFormProps) {
         )}
       </div>
 
+      <div className="space-y-2">
+        <label htmlFor="profile-bio" className="font-sans text-sm text-muted-foreground">
+          Bio
+        </label>
+        <textarea
+          id="profile-bio"
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          maxLength={280}
+          rows={3}
+          placeholder="Conte um pouco sobre você e seus gostos cinematográficos..."
+          className="w-full min-h-[88px] resize-y rounded-md border border-border bg-neutral-950 px-3 py-2 font-sans text-sm text-foreground shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        />
+        <p className="font-sans text-xs text-muted-foreground text-right">
+          {bio.length}/280
+        </p>
+      </div>
+
       <Button
         type="submit"
         disabled={
           isPending ||
           checking ||
-          (!nameChanged && !usernameChanged) ||
+          (!nameChanged && !usernameChanged && !bioChanged) ||
           (usernameChanged && (!canChangeUsername || !available))
         }
         className="gap-2"

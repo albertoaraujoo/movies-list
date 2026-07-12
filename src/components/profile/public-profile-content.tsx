@@ -42,6 +42,11 @@ export function PublicProfileContent({
 
   useEffect(() => {
     if (!profile) return;
+    refreshFollowLists();
+  }, [profile]);
+
+  function refreshFollowLists() {
+    if (!profile) return;
     Promise.all([
       getFollowersAction(profile.id),
       getFollowingAction(profile.id),
@@ -49,7 +54,7 @@ export function PublicProfileContent({
       setFollowers(f.data);
       setFollowing(fg.data);
     });
-  }, [profile]);
+  }
 
   if (isPrivate) {
     return (
@@ -126,7 +131,11 @@ export function PublicProfileContent({
         </div>
       )}
 
-      <FollowTabs followers={followers} following={following} />
+      <FollowTabs
+        followers={followers}
+        following={following}
+        onUpdate={refreshFollowLists}
+      />
 
       {reviews.length > 0 && (
         <section className="space-y-3" data-slot="public-reviews-section">
