@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition, useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Eye, Film } from "lucide-react";
@@ -43,24 +43,19 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
 
-  const { data: serverItems, isLoading } = useQuery({
+  const { data: items = [], isLoading } = useQuery({
     queryKey: ["drawn-movies"],
     queryFn: () => getDrawnMovies(session!.accessToken),
     enabled: !!session?.accessToken,
     initialData: initialItems,
-    placeholderData: initialItems,
   });
 
-  const [items, setItems] = useState<DrawnMovie[]>(initialItems ?? []);
   const [confirmRemove, setConfirmRemove] = useState<{ drawnId: string; title: string } | null>(null);
   const [confirmMarkWatched, setConfirmMarkWatched] = useState<{
     movieId: string;
     drawnId: string;
     title: string;
   } | null>(null);
-
-  // Sincroniza com o servidor quando os dados chegam
-  const displayItems = serverItems ?? items;
 
   function handleRemove(drawnId: string, title: string) {
     setConfirmRemove({ drawnId, title });
@@ -75,7 +70,6 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
         await removeDrawnMovieAction(drawnId);
         queryClient.invalidateQueries({ queryKey: ["drawn-movies"] });
         toast.success("Removido da lista de sorteados", { description: title });
-        setItems((prev) => prev.filter((i) => i.id !== drawnId));
       } catch {
         toast.error("Erro ao remover da lista");
       }
@@ -88,14 +82,13 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
 
   function handleConfirmMarkWatched() {
     if (!confirmMarkWatched) return;
-    const { movieId, drawnId, title } = confirmMarkWatched;
+    const { movieId, title } = confirmMarkWatched;
     setConfirmMarkWatched(null);
     startTransition(async () => {
       try {
         await markWatchedAction(movieId, true);
         queryClient.invalidateQueries({ queryKey: ["drawn-movies"] });
         toast.success("Marcado como assistido!", { description: title, icon: "✅" });
-        setItems((prev) => prev.filter((i) => i.id !== drawnId));
       } catch {
         toast.error("Erro ao marcar como assistido");
       }
@@ -112,7 +105,7 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
     );
   }
 
-  if (displayItems.length === 0) {
+  if (items.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -133,7 +126,7 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
     <div className="space-y-2">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
         <AnimatePresence initial={false}>
-          {displayItems.map((item, index) => (
+          {items.map((item, index) => (
             <motion.div
               key={item.id}
               layout
@@ -253,7 +246,7 @@ export function DrawnMoviesList({ initialItems }: DrawnMoviesListProps) {
       </Dialog>
 
       <p className="font-sans text-xs text-muted-foreground text-center pt-2 leading-relaxed">
-        {displayItems.length}/30 filmes sorteados
+        {items.length}/30 filmes sorteados
       </p>
     </div>
   );

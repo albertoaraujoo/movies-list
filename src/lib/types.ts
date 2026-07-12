@@ -1,10 +1,47 @@
 // ─── Modelos de dados (espelho do backend) ──────────────────────────────────
 
+export type ProfilePrivacy = "public" | "private" | "friends";
+
 export interface User {
   id: string;
   email: string;
   name: string;
   image?: string;
+  username?: string | null;
+  privacy?: ProfilePrivacy;
+}
+
+export interface UserProfile extends User {
+  totalMovies: number;
+  watchedMovies: number;
+  listsCount: number;
+  followersCount: number;
+  followingCount: number;
+  usernameUpdatedAt?: string | null;
+  nameEditedAt?: string | null;
+  canChangeUsername?: boolean;
+  daysUntilUsernameChange?: number;
+}
+
+export interface PublicUserProfile {
+  id: string;
+  name: string;
+  image: string | null;
+  username: string;
+  privacy: ProfilePrivacy;
+  watchedMovies: number;
+  listsCount: number;
+  followersCount: number;
+  followingCount: number;
+  isFollowing?: boolean;
+  isMutual?: boolean;
+}
+
+export interface FollowUser {
+  id: string;
+  name: string;
+  username: string | null;
+  image: string | null;
 }
 
 export interface DrawnMovie {
@@ -14,10 +51,92 @@ export interface DrawnMovie {
   movie: Movie;
 }
 
+export interface ReviewAuthor {
+  id: string;
+  name: string;
+  username: string | null;
+  image: string | null;
+}
+
+export interface Review {
+  id: string;
+  text: string;
+  watchedAt: string | null;
+  movieId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  movie?: Movie;
+  user?: ReviewAuthor;
+  likesCount?: number;
+  commentsCount?: number;
+  likedByMe?: boolean;
+}
+
+export interface ReviewComment {
+  id: string;
+  text: string;
+  reviewId: string;
+  userId: string;
+  parentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: ReviewAuthor;
+  replies?: ReviewComment[];
+}
+
+export interface ReviewThread {
+  review: Review;
+  comments: ReviewComment[];
+}
+
+export interface MovieList {
+  id: string;
+  name: string;
+  description?: string | null;
+  isDefault: boolean;
+  isFavorites: boolean;
+  isNumbered: boolean;
+  isRanked: boolean;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { items: number };
+  items?: MovieListItem[];
+}
+
+export interface MovieListItem {
+  id: string;
+  listId: string;
+  movieId: string;
+  order: number;
+  movie: Movie;
+}
+
+export type ActivityType = "movie_watched" | "list_created";
+
+export interface ActivityLog {
+  id: string;
+  type: ActivityType;
+  userId: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    username: string | null;
+    image: string | null;
+  };
+}
+
+export interface ActivityResponse {
+  mine: ActivityLog[];
+  following: ActivityLog[];
+}
+
 // Onde assistir (JustWatch / TMDB)
 export interface WatchProvider {
   logo_path: string | null;
-  /** URL completa do ícone (API já retorna pronta para <img src>) */
   logoUrl?: string;
   provider_id: number;
   provider_name: string;
@@ -44,11 +163,13 @@ export interface Movie {
   createdAt: string;
   updatedAt: string;
   drawn?: DrawnMovie;
+  review?: Review | null;
   overview?: string | null;
   runtime?: number | null;
   watchProvidersBr?: WatchProvidersBr | null;
-  /** Nota do usuário (0 a 10 em passos de 0,5). */
+  genres?: string[];
   userRating?: number | null;
+  isFavorite?: boolean;
 }
 
 export interface PaginationMeta {
@@ -56,6 +177,8 @@ export interface PaginationMeta {
   page: number;
   limit: number;
   totalPages: number;
+  watchedTotal?: number;
+  unwatchedTotal?: number;
 }
 
 export interface PaginatedMovies {
@@ -63,18 +186,25 @@ export interface PaginatedMovies {
   meta: PaginationMeta;
 }
 
-/** Resposta de GET /movies (inclui listas watched e unwatched). */
+export interface PaginatedReviews {
+  data: Review[];
+  meta: PaginationMeta;
+}
+
+/** Resposta de GET /movies. */
 export interface GetMoviesResponse {
   data: Movie[];
   meta: PaginationMeta;
-  watched: Movie[];
-  unwatched: Movie[];
 }
 
 /** Resposta de POST /movies/deduplicate. */
 export interface DeduplicateResponse {
   removedCount: number;
   groups: Array<{ kept: Movie; removed: Movie[] }>;
+}
+
+export interface ListDeduplicateResponse {
+  removedCount: number;
 }
 
 // ─── Payloads de requisição ──────────────────────────────────────────────────
@@ -86,6 +216,12 @@ export interface CreateMoviePayload {
   director?: string;
   year?: number;
   watched?: boolean;
+  listIds?: string[];
+}
+
+export interface BulkCreateMoviesPayload {
+  movies: CreateMoviePayload[];
+  listIds?: string[];
 }
 
 export interface UpdateMoviePayload {
@@ -94,15 +230,35 @@ export interface UpdateMoviePayload {
   watched?: boolean;
   director?: string;
   year?: number;
-  /** 0 a 10 em passos de 0,5. */
   userRating?: number;
 }
+
+export interface CreateReviewPayload {
+  movieId: string;
+  text: string;
+  watchedAt?: string;
+}
+
+export interface UpdateReviewPayload {
+  text: string;
+  watchedAt?: string;
+}
+
+export interface CreateListPayload {
+  name: string;
+  description?: string;
+  isNumbered?: boolean;
+  isRanked?: boolean;
+}
+
+export type UpdateListPayload = Partial<CreateListPayload>;
 
 export interface GetMoviesParams {
   search?: string;
   watched?: boolean;
   year?: number;
   director?: string;
+  genre?: string;
   page?: number;
   limit?: number;
 }
@@ -139,9 +295,24 @@ export interface TmdbSearchResponse {
   total_pages: number;
 }
 
+export interface TmdbResult {
+  id: number;
+  title: string;
+  posterPath: string | null;
+  year: number | null;
+  overview: string;
+  rating: number;
+}
+
 // ─── Auth Session ────────────────────────────────────────────────────────────
 
 export interface AppSession {
   user: User;
   accessToken: string;
+}
+
+export const REVIEW_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export function canEditReview(createdAt: string): boolean {
+  return Date.now() - new Date(createdAt).getTime() <= REVIEW_EDIT_WINDOW_MS;
 }

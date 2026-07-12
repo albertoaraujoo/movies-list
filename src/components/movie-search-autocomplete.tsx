@@ -4,17 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Search, Loader2, Film } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { searchTmdb } from "@/lib/api";
 import { getTmdbPosterUrl } from "@/lib/tmdb-images";
+import type { TmdbResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-interface TmdbResult {
-  id: number;
-  title: string;
-  posterPath: string | null;
-  year: number | null;
-  overview: string;
-  rating: number;
-}
 
 interface MovieSearchAutocompleteProps {
   onSelect: (movie: TmdbResult) => void;
@@ -28,50 +22,30 @@ export function MovieSearchAutocomplete({
   className,
 }: MovieSearchAutocompleteProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<TmdbResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [manualClose, setManualClose] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const skipNextOpenRef = useRef(false);
 
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/tmdb/search?q=${encodeURIComponent(query)}`);
-        const data: TmdbResult[] = await res.json();
-        setResults(data);
-        if (data.length > 0) {
-          if (skipNextOpenRef.current) {
-            skipNextOpenRef.current = false;
-            setIsOpen(false);
-          } else {
-            setIsOpen(true);
-          }
-        } else {
-          setIsOpen(false);
-        }
-      } catch {
-        setResults([]);
-      } finally {
-        setIsLoading(false);
-      }
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+      setManualClose(false);
     }, 400);
-
     return () => clearTimeout(timer);
   }, [query]);
+
+  const { data: results = [], isLoading } = useQuery<TmdbResult[]>({
+    queryKey: ["tmdb-search", debouncedQuery],
+    queryFn: () => searchTmdb(debouncedQuery),
+    enabled: debouncedQuery.trim().length > 0,
+  });
+
+  const isOpen = !manualClose && results.length > 0 && debouncedQuery.trim().length > 0;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+        setManualClose(true);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -80,9 +54,8 @@ export function MovieSearchAutocomplete({
 
   function handleSelect(movie: TmdbResult) {
     onSelect(movie);
-    skipNextOpenRef.current = true;
+    setManualClose(true);
     setQuery(movie.title);
-    setIsOpen(false);
   }
 
   return (
@@ -90,13 +63,11 @@ export function MovieSearchAutocomplete({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
         <input
-          ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => {
-            // Não reabrir se o valor atual corresponde a um resultado (ex.: seleção recente)
             if (results.length > 0 && !results.some((r) => r.title === query)) {
-              setIsOpen(true);
+              setManualClose(false);
             }
           }}
           placeholder={placeholder}
@@ -139,7 +110,6 @@ export function MovieSearchAutocomplete({
                       "focus:outline-none focus:bg-white/5"
                     )}
                   >
-                    {/* Poster miniatura */}
                     <div className="relative shrink-0 w-9 h-14 rounded-md overflow-hidden bg-surface-raised border border-border">
                       {movie.posterPath ? (
                         <Image
@@ -157,7 +127,6 @@ export function MovieSearchAutocomplete({
                       )}
                     </div>
 
-                    {/* Info */}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground truncate">
                         {movie.title}

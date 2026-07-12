@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import Image from "next/image";
-import { Film, Loader2, List, Search, ChevronLeft, ChevronRight } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useTransition } from "react";
+import { Loader2, List, Search } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -11,22 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getMovies, getDrawnMovies } from "@/lib/api";
 import { addMovieToDrawnAction, addMovieToDrawnFromTmdbAction } from "@/actions/movie-actions";
-import { getTmdbPosterUrl } from "@/lib/tmdb-images";
 import { MovieSearchAutocomplete } from "@/components/movie-search-autocomplete";
-import type { Movie } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { useSession } from "next-auth/react";
-
-interface TmdbResult {
-  id: number;
-  title: string;
-  posterPath: string | null;
-  year: number | null;
-  overview: string;
-  rating: number;
-}
+import { MovieListPicker } from "@/components/movie-list-picker";
+import type { TmdbResult } from "@/lib/types";
+import { cn, getErrorMessage } from "@/lib/utils";
 
 interface AddToDrawnModalProps {
   open: boolean;
@@ -36,35 +24,11 @@ interface AddToDrawnModalProps {
 type AddMode = "list" | "tmdb";
 
 export function AddToDrawnModal({ open, onOpenChange }: AddToDrawnModalProps) {
-  const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState<AddMode>("list");
-  const [listPage, setListPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedTmdb, setSelectedTmdb] = useState<TmdbResult | null>(null);
-
-  const { data: moviesRes, isLoading: loadingMovies } = useQuery({
-    queryKey: ["movies", "for-drawn", listPage],
-    queryFn: () => getMovies({ page: listPage, limit: 24 }, session!.accessToken!),
-    enabled: open && !!session?.accessToken,
-  });
-
-  const { data: drawnList } = useQuery({
-    queryKey: ["drawn-movies"],
-    queryFn: () => getDrawnMovies(session!.accessToken!),
-    enabled: open && !!session?.accessToken,
-  });
-
-  const drawnIds = new Set((drawnList ?? []).map((d) => d.movie.id));
-  const pageMovies: Movie[] = moviesRes?.data ?? [];
-  const available = pageMovies.filter((m) => !drawnIds.has(m.id));
-  const totalPages = moviesRes?.meta?.totalPages ?? 1;
-  const hasPagination = totalPages > 1;
-
-  useEffect(() => {
-    if (open) setListPage(1);
-  }, [open]);
 
   function handleAddFromList() {
     if (!selectedId) return;
@@ -76,13 +40,7 @@ export function AddToDrawnModal({ open, onOpenChange }: AddToDrawnModalProps) {
         onOpenChange(false);
         setSelectedId(null);
       } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : typeof err === "object" && err !== null && "message" in err && typeof (err as { message: unknown }).message === "string"
-              ? (err as { message: string }).message
-              : "Erro ao adicionar";
-        toast.error(msg);
+        toast.error(getErrorMessage(err, "Erro ao adicionar"));
       }
     });
   }
@@ -104,13 +62,7 @@ export function AddToDrawnModal({ open, onOpenChange }: AddToDrawnModalProps) {
         onOpenChange(false);
         setSelectedTmdb(null);
       } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : typeof err === "object" && err !== null && "message" in err && typeof (err as { message: unknown }).message === "string"
-              ? (err as { message: string }).message
-              : "Erro ao adicionar";
-        toast.error(msg);
+        toast.error(getErrorMessage(err, "Erro ao adicionar"));
       }
     });
   }
@@ -123,6 +75,7 @@ export function AddToDrawnModal({ open, onOpenChange }: AddToDrawnModalProps) {
             Adicionar à lista de sorteados
           </DialogTitle>
         </DialogHeader>
+
         <div className="flex gap-2 border-b border-border pb-2">
           <button
             type="button"
@@ -151,6 +104,7 @@ export function AddToDrawnModal({ open, onOpenChange }: AddToDrawnModalProps) {
             Buscar no TMDB
           </button>
         </div>
+
         {mode === "tmdb" ? (
           <>
             <p className="font-sans text-sm text-muted-foreground">
@@ -191,112 +145,29 @@ export function AddToDrawnModal({ open, onOpenChange }: AddToDrawnModalProps) {
             <p className="font-sans text-sm text-muted-foreground">
               Escolha um filme da sua lista para adicionar à fila de sorteados (máx. 30).
             </p>
-            {loadingMovies ? (
-          <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Carregando filmes...
-          </div>
-        ) : available.length === 0 ? (
-          <p className="font-sans text-sm text-muted-foreground py-4">
-            Todos os seus filmes já estão na lista ou a lista está vazia.
-          </p>
-        ) : (
-          <>
-            <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
-              {available.map((movie) => (
-                <button
-                  key={movie.id}
-                  type="button"
-                  onClick={() => setSelectedId(movie.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 p-2 rounded-lg border text-left transition-colors",
-                    selectedId === movie.id
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover:border-primary/40"
-                  )}
-                >
-                <div className="relative w-8 h-12 rounded overflow-hidden bg-surface-raised shrink-0">
-                  {movie.posterPath ? (
-                    <Image
-                      src={getTmdbPosterUrl(movie.posterPath, "w300") ?? movie.posterPath}
-                      alt=""
-                        fill
-                        sizes="32px"
-                        className="object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Film className="size-4 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-sans text-sm font-medium text-foreground truncate">
-                      {movie.title}
-                    </p>
-                    {movie.year && (
-                      <p className="font-sans text-xs text-muted-foreground">
-                        {movie.year}
-                      </p>
-                    )}
-                  </div>
-                </button>
-              ))}
+            <MovieListPicker
+              open={open}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="px-3 py-1.5 rounded-lg border border-border font-sans text-sm hover:bg-white/5"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleAddFromList}
+                disabled={!selectedId || isPending}
+                className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-sans text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+              >
+                {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                Adicionar
+              </button>
             </div>
-            {hasPagination && (
-              <div className="flex items-center justify-center gap-2 pt-2 border-t border-border mt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedId(null);
-                    setListPage((p) => Math.max(1, p - 1));
-                  }}
-                  disabled={listPage <= 1}
-                  className="p-1.5 rounded-lg border border-border disabled:opacity-50 hover:bg-white/5"
-                  aria-label="Página anterior"
-                >
-                  <ChevronLeft className="size-4" />
-                </button>
-                <span className="font-sans text-sm text-muted-foreground">
-                  {listPage} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedId(null);
-                    setListPage((p) => Math.min(totalPages, p + 1));
-                  }}
-                  disabled={listPage >= totalPages}
-                  className="p-1.5 rounded-lg border border-border disabled:opacity-50 hover:bg-white/5"
-                  aria-label="Próxima página"
-                >
-                  <ChevronRight className="size-4" />
-                </button>
-              </div>
-            )}
-          </>
-        )}
-            {available.length > 0 && (
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => onOpenChange(false)}
-                  className="px-3 py-1.5 rounded-lg border border-border font-sans text-sm hover:bg-white/5"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddFromList}
-                  disabled={!selectedId || isPending}
-                  className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-sans text-sm font-medium disabled:opacity-50 flex items-center gap-2"
-                >
-                  {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-                  Adicionar
-                </button>
-              </div>
-            )}
           </>
         )}
       </DialogContent>

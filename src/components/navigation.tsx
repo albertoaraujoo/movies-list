@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Film, Shuffle, LogOut, User } from "lucide-react";
+import { Film, Shuffle, LogOut, User, Activity } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import {
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Filmes", icon: Film },
   { href: "/drawn", label: "Sorteados", icon: Shuffle },
+  { href: "/activity", label: "Atividade", icon: Activity },
 ];
 
 export function Navigation() {
@@ -110,6 +111,13 @@ export function Navigation() {
                     {session.user.email}
                   </p>
                 </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile">
+                    <User className="size-4" />
+                    Perfil
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => signOut({ callbackUrl: "/" })}

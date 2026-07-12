@@ -10,8 +10,10 @@ import { AddToDrawnModal } from "@/components/add-to-drawn-modal";
 import { RemoveFromDrawnModal } from "@/components/remove-from-drawn-modal";
 import type { DrawnMovie } from "@/lib/types";
 
-const ADMIN_EMAIL = "alberto.araujoo@gmail.com";
-const ADMIN_EMAIL_2 = "breendasouzam@gmail.com";
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
 interface AdminDrawnSectionProps {
   initialDrawnItems?: DrawnMovie[];
@@ -32,9 +34,8 @@ export function AdminDrawnSection({
   });
   const listForRemove = drawnItems ?? initialDrawnItems ?? [];
 
-  const isAdmin =
-    session?.user?.email === ADMIN_EMAIL ||
-    session?.user?.email === ADMIN_EMAIL_2;
+  const userEmail = session?.user?.email?.toLowerCase() ?? "";
+  const isAdmin = ADMIN_EMAILS.includes(userEmail);
   if (!isAdmin) return null;
 
   return (

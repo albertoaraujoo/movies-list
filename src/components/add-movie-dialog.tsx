@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { motion } from "framer-motion";
-import { Plus, Film, Loader2 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle, Film, Layers, Loader2, Plus, X } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -15,37 +17,92 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MovieSearchAutocomplete } from "@/components/movie-search-autocomplete";
-import { createMovieAction } from "@/actions/movie-actions";
-import type { Movie } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { LibraryMovieSearch } from "@/components/library-movie-search";
+import { bulkCreateMoviesAction } from "@/actions/movie-actions";
+import { addMoviesToListsAction } from "@/actions/list-actions";
+import { getLists } from "@/lib/api";
+import type { CreateMoviePayload, Movie, TmdbResult } from "@/lib/types";
+import { cn, getErrorMessage } from "@/lib/utils";
 
-interface TmdbResult {
-  id: number;
+const MAX_QUEUE = 10;
+
+interface QueuedMovie {
+  id: string;
   title: string;
-  posterPath: string | null;
-  year: number | null;
-  overview: string;
-  rating: number;
+  movieId?: string;
+  tmdbId?: number;
+  year?: number;
 }
 
 interface AddMovieDialogProps {
   onAdded?: (movie: Movie) => void;
+  defaultListIds?: string[];
+  fixedListIds?: string[];
+  excludeMovieIds?: string[];
+  dialogTitle?: string;
+  submitLabel?: string;
+  trigger?: ReactNode;
 }
 
-export function AddMovieDialog({ onAdded }: AddMovieDialogProps) {
+export function AddMovieDialog({
+  onAdded,
+  defaultListIds = [],
+  fixedListIds = [],
+  excludeMovieIds = [],
+  dialogTitle = "Adicionar Filmes",
+  submitLabel = "Adicionar às listas",
+  trigger,
+}: AddMovieDialogProps) {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [selectedTmdb, setSelectedTmdb] = useState<TmdbResult | null>(null);
   const [manualTitle, setManualTitle] = useState("");
-  const [notes, setNotes] = useState("");
-  const [mode, setMode] = useState<"tmdb" | "manual">("tmdb");
+  const [mode, setMode] = useState<"tmdb" | "manual" | "library">("tmdb");
+  const [queue, setQueue] = useState<QueuedMovie[]>([]);
+  const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
+  const [searchKey, setSearchKey] = useState(0);
+
+  const isListLocked = fixedListIds.length > 0;
+  const targetListIds = isListLocked ? fixedListIds : selectedListIds;
+
+  const {
+    data: lists = [],
+    isLoading: isLoadingLists,
+    isError: isListsError,
+    refetch: refetchLists,
+  } = useQuery({
+    queryKey: ["lists"],
+    queryFn: () => getLists(session!.accessToken),
+    enabled: !!session?.accessToken && open && !isListLocked,
+  });
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (fixedListIds.length > 0) {
+      setSelectedListIds(fixedListIds);
+      return;
+    }
+
+    if (defaultListIds.length > 0) {
+      setSelectedListIds(defaultListIds);
+      return;
+    }
+
+    if (lists.length > 0 && selectedListIds.length === 0) {
+      const defaultList = lists.find((list) => list.isDefault);
+      if (defaultList) setSelectedListIds([defaultList.id]);
+    }
+  }, [open, lists, defaultListIds, fixedListIds, selectedListIds.length]);
 
   function resetForm() {
-    setSelectedTmdb(null);
     setManualTitle("");
-    setNotes("");
     setMode("tmdb");
+    setQueue([]);
+    setSearchKey((k) => k + 1);
+    setSelectedListIds(fixedListIds.length > 0 ? fixedListIds : defaultListIds);
   }
 
   function handleOpenChange(v: boolean) {
@@ -53,161 +110,328 @@ export function AddMovieDialog({ onAdded }: AddMovieDialogProps) {
     if (!v) resetForm();
   }
 
-  function handleTmdbSelect(movie: TmdbResult) {
-    setSelectedTmdb(movie);
+  function isInQueue(item: { title: string; movieId?: string; tmdbId?: number }) {
+    return queue.some(
+      (q) =>
+        (item.movieId && q.movieId === item.movieId) ||
+        (item.tmdbId != null && q.tmdbId === item.tmdbId) ||
+        q.title.toLowerCase() === item.title.toLowerCase()
+    );
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const title = mode === "tmdb" ? selectedTmdb?.title : manualTitle;
+  function enqueue(item: Omit<QueuedMovie, "id">) {
+    if (queue.length >= MAX_QUEUE) {
+      toast.error(`Máximo de ${MAX_QUEUE} filmes por vez`);
+      return false;
+    }
+    if (item.movieId && excludeMovieIds.includes(item.movieId)) {
+      toast.error("Este filme já está nesta lista");
+      return false;
+    }
+    if (isInQueue(item)) {
+      toast.error("Filme já está na fila");
+      return false;
+    }
 
-    if (!title?.trim()) {
+    setQueue((prev) => [...prev, { ...item, id: crypto.randomUUID() }]);
+    setSearchKey((k) => k + 1);
+    return true;
+  }
+
+  function handleTmdbSelect(movie: TmdbResult) {
+    enqueue({
+      title: movie.title,
+      tmdbId: movie.id,
+      year: movie.year ?? undefined,
+    });
+  }
+
+  function handleLibrarySelect(movie: Movie) {
+    enqueue({
+      title: movie.title,
+      movieId: movie.id,
+      year: movie.year ?? undefined,
+      tmdbId: movie.tmdbId ?? undefined,
+    });
+  }
+
+  function addManualToQueue() {
+    if (!manualTitle.trim()) {
       toast.error("Informe o título do filme");
       return;
     }
+    if (
+      enqueue({
+        title: manualTitle.trim(),
+      })
+    ) {
+      setManualTitle("");
+    }
+  }
+
+  function removeFromQueue(id: string) {
+    setQueue((prev) => prev.filter((q) => q.id !== id));
+  }
+
+  function toggleList(listId: string) {
+    if (isListLocked) return;
+    setSelectedListIds((prev) =>
+      prev.includes(listId) ? prev.filter((id) => id !== listId) : [...prev, listId]
+    );
+  }
+
+  function handleBulkSubmit() {
+    if (queue.length === 0) {
+      toast.error("Adicione pelo menos um filme à fila");
+      return;
+    }
+    if (targetListIds.length === 0) {
+      toast.error("Selecione pelo menos uma lista");
+      return;
+    }
+
+    const newMovies = queue.filter((q) => !q.movieId);
+    const existingMovieIds = queue.filter((q) => q.movieId).map((q) => q.movieId!);
 
     startTransition(async () => {
       try {
-        const movie = await createMovieAction({
-          title: title.trim(),
-          notes: notes.trim() || undefined,
-          tmdbId: mode === "tmdb" ? selectedTmdb?.id : undefined,
-          year: mode === "tmdb" ? (selectedTmdb?.year ?? undefined) : undefined,
-        });
-        toast.success("Filme adicionado!", {
-          description: movie.title,
-          icon: "🎬",
-        });
+        let createdCount = 0;
+
+        if (newMovies.length > 0) {
+          const movies: CreateMoviePayload[] = newMovies.map((q) => ({
+            title: q.title,
+            tmdbId: q.tmdbId,
+            year: q.year,
+          }));
+          const created = await bulkCreateMoviesAction({
+            movies,
+            listIds: targetListIds,
+          });
+          createdCount += created.length;
+          if (created[0]) onAdded?.(created[0]);
+        }
+
+        if (existingMovieIds.length > 0) {
+          await addMoviesToListsAction(existingMovieIds, targetListIds);
+          createdCount += existingMovieIds.length;
+        }
+
+        toast.success(`${createdCount} filme(s) adicionado(s)!`, { icon: "🎬" });
         queryClient.invalidateQueries({ queryKey: ["movies"] });
-        onAdded?.(movie);
+        queryClient.invalidateQueries({ queryKey: ["lists"] });
+        router.refresh();
         setOpen(false);
         resetForm();
       } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : typeof err === "object" && err !== null && "message" in err && typeof (err as { message: unknown }).message === "string"
-              ? (err as { message: string }).message
-              : "Erro ao adicionar filme";
-        toast.error(msg);
+        toast.error(getErrorMessage(err, "Erro ao adicionar filmes"));
       }
     });
   }
 
+  const selectableLists = lists.filter((list) => !list.isFavorites);
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2 bg-primary text-primary-foreground hover:brightness-110">
-          <Plus className="size-4" />
-          <span>Adicionar Filme</span>
-        </Button>
+        {trigger ?? (
+          <Button className="flex items-center gap-2 bg-primary text-primary-foreground hover:brightness-110">
+            <Plus className="size-4" />
+            <span>Adicionar Filme</span>
+          </Button>
+        )}
       </DialogTrigger>
 
-      <DialogContent className="border-border bg-background sm:max-w-lg">
+      <DialogContent className="border-border bg-neutral-900 shadow-2xl sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display tracking-wider uppercase text-xl leading-none">
             <Film className="size-5 text-gold shrink-0" />
-            Adicionar Filme
+            {dialogTitle}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 mt-2">
-          {/* Toggle de modo */}
-          <div className="flex p-1 rounded-xl glass border border-border gap-1">
-            {(["tmdb", "manual"] as const).map((m) => (
+        <div className="space-y-5 mt-2">
+          <div className="flex p-1 rounded-xl border border-border bg-neutral-950 gap-1">
+            {(
+              [
+                { key: "tmdb", label: "🔍 TMDB" },
+                { key: "library", label: "📚 Biblioteca" },
+                { key: "manual", label: "✏️ Manual" },
+              ] as const
+            ).map(({ key, label }) => (
               <button
-                key={m}
+                key={key}
                 type="button"
-                onClick={() => setMode(m)}
+                onClick={() => setMode(key)}
                 className={cn(
-                  "flex-1 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  mode === m
+                  "flex-1 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200",
+                  mode === key
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {m === "tmdb" ? "🔍 Buscar no TMDB" : "✏️ Manual"}
+                {label}
               </button>
             ))}
           </div>
 
-          {/* Campo de busca/título */}
           {mode === "tmdb" ? (
             <div className="space-y-2">
               <label className="font-sans text-sm text-muted-foreground font-medium">
                 Buscar filme
               </label>
               <MovieSearchAutocomplete
+                key={`tmdb-${searchKey}`}
                 onSelect={handleTmdbSelect}
-                placeholder="Digite o nome do filme..."
+                placeholder="Digite e clique no resultado para enfileirar..."
               />
-              {selectedTmdb && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  className="flex items-center gap-3 p-3 rounded-xl glass border border-primary/20"
-                >
-                  <span className="text-2xl">✅</span>
-                  <div>
-                    <p className="font-display tracking-wider uppercase text-sm leading-tight">{selectedTmdb.title}</p>
-                    {selectedTmdb.year && (
-                      <p className="font-sans text-xs text-muted-foreground leading-relaxed">{selectedTmdb.year}</p>
-                    )}
-                  </div>
-                </motion.div>
-              )}
+              <p className="font-sans text-xs text-muted-foreground">
+                Clique no resultado para adicionar à fila automaticamente
+              </p>
+            </div>
+          ) : mode === "library" ? (
+            <div className="space-y-2">
+              <label className="font-sans text-sm text-muted-foreground font-medium">
+                Buscar na sua biblioteca
+              </label>
+              <LibraryMovieSearch
+                key={`lib-${searchKey}`}
+                onSelect={handleLibrarySelect}
+                excludeMovieIds={excludeMovieIds}
+                placeholder="Digite e clique no resultado para enfileirar..."
+              />
+              <p className="font-sans text-xs text-muted-foreground">
+                Clique no resultado para adicionar à fila automaticamente
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
               <label htmlFor="title" className="font-sans text-sm text-muted-foreground font-medium">
                 Título do filme
               </label>
-              <Input
-                id="title"
-                value={manualTitle}
-                onChange={(e) => setManualTitle(e.target.value)}
-                placeholder="Ex: Interestelar"
-                className="text-base glass border-border focus-visible:border-primary/50 bg-transparent"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="title"
+                  value={manualTitle}
+                  onChange={(e) => setManualTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addManualToQueue();
+                    }
+                  }}
+                  placeholder="Ex: Interestelar"
+                  className="text-base border-border bg-neutral-950 focus-visible:border-primary/50"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addManualToQueue}
+                  disabled={!manualTitle.trim() || queue.length >= MAX_QUEUE}
+                  className="shrink-0 border-border bg-neutral-950"
+                >
+                  <Plus className="size-4" />
+                </Button>
+              </div>
             </div>
           )}
 
-          {/* Notas */}
-          <div className="space-y-2">
-            <label htmlFor="notes" className="text-sm text-muted-foreground font-medium">
-              Notas{" "}
-              <span className="text-xs opacity-60">(opcional)</span>
-            </label>
-            <textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Indicação, onde assistir, lembrete..."
-              rows={3}
-              className={cn(
-                "w-full px-3 py-2.5 rounded-xl text-base resize-none",
-                "glass border border-border",
-                "text-foreground placeholder:text-muted-foreground",
-                "focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20",
-                "transition-all duration-200"
-              )}
-            />
-          </div>
+          <AnimatePresence>
+            {queue.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-2"
+              >
+                <p className="font-sans text-xs text-muted-foreground uppercase tracking-wider">
+                  Fila ({queue.length}/{MAX_QUEUE})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {queue.map((item) => (
+                    <span
+                      key={item.id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-surface-raised border border-border"
+                    >
+                      <span className="truncate max-w-[140px]">{item.title}</span>
+                      {item.movieId && (
+                        <span className="text-[10px] text-muted-foreground">bib.</span>
+                      )}
+                      <button
+                        type="button"
+                        aria-label={`Remover ${item.title}`}
+                        onClick={() => removeFromQueue(item.id)}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* Submit */}
+          {!isListLocked && (
+            <div className="space-y-2">
+              <p className="font-sans text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="size-3.5" />
+                Listas destino
+              </p>
+
+              {isLoadingLists ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  Carregando listas...
+                </div>
+              ) : isListsError ? (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2">
+                  <span className="flex items-center gap-2 text-xs text-destructive">
+                    <AlertCircle className="size-3.5 shrink-0" />
+                    Erro ao carregar listas
+                  </span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => refetchLists()}>
+                    Tentar novamente
+                  </Button>
+                </div>
+              ) : selectableLists.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma lista disponível.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {selectableLists.map((list) => (
+                    <button
+                      key={list.id}
+                      type="button"
+                      onClick={() => toggleList(list.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                        selectedListIds.includes(list.id)
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border bg-neutral-950 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {list.name}
+                      {list.isDefault && " ★"}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-3 pt-1">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
-              className="flex-1 glass border-border"
+              className="flex-1 border-border bg-neutral-950"
             >
               Cancelar
             </Button>
             <Button
-              type="submit"
-              disabled={isPending || (mode === "tmdb" && !selectedTmdb) || (mode === "manual" && !manualTitle.trim())}
-              className="flex-1 bg-primary text-primary-foreground hover:brightness-110"
+              type="button"
+              onClick={handleBulkSubmit}
+              disabled={isPending || queue.length === 0 || targetListIds.length === 0}
+              className="flex-1 bg-primary text-primary-foreground hover:brightness-110 gap-2"
             >
               {isPending ? (
                 <>
@@ -217,12 +441,12 @@ export function AddMovieDialog({ onAdded }: AddMovieDialogProps) {
               ) : (
                 <>
                   <Plus className="size-4" />
-                  Adicionar
+                  {submitLabel}
                 </>
               )}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

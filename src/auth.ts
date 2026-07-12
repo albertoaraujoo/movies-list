@@ -1,6 +1,7 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Google from "next-auth/providers/google";
 import { loginWithGoogle } from "@/lib/api";
+import type { ProfilePrivacy } from "@/lib/types";
 
 declare module "next-auth" {
   interface Session extends DefaultSession {
@@ -10,6 +11,8 @@ declare module "next-auth" {
       name: string;
       email: string;
       image?: string;
+      username?: string | null;
+      privacy?: ProfilePrivacy;
     };
   }
 }
@@ -21,7 +24,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: "/login",
   },
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, trigger, session }) {
       if (account?.id_token) {
         try {
           const data = await loginWithGoogle(account.id_token);
@@ -31,12 +34,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           console.error("[Auth] Falha ao trocar token com o backend:", error);
         }
       }
+
+      if (trigger === "update" && session?.user) {
+        token["backendUser"] = {
+          ...(token["backendUser"] as Record<string, unknown>),
+          ...session.user,
+        };
+      }
+
       return token;
     },
     async session({ session, token }) {
       const accessToken = token["accessToken"] as string | undefined;
       const backendUser = token["backendUser"] as
-        | { id: string; name: string; email: string }
+        | {
+            id: string;
+            name: string;
+            email: string;
+            username?: string | null;
+            privacy?: ProfilePrivacy;
+          }
         | undefined;
 
       if (accessToken) {
@@ -49,6 +66,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: backendUser.id,
           name: backendUser.name,
           email: backendUser.email,
+          username: backendUser.username,
+          privacy: backendUser.privacy,
         };
       }
 
