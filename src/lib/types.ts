@@ -34,6 +34,7 @@ export interface PublicUserProfile {
   followersCount: number;
   followingCount: number;
   isFollowing?: boolean;
+  followsYou?: boolean;
   isMutual?: boolean;
 }
 
@@ -42,6 +43,22 @@ export interface FollowUser {
   name: string;
   username: string | null;
   image: string | null;
+}
+
+export type NotificationType = "user_followed";
+
+export interface NotificationItem {
+  id: string;
+  type: NotificationType;
+  readAt: string | null;
+  createdAt: string;
+  actor: FollowUser;
+  isFollowingActor: boolean;
+}
+
+export interface NotificationsResponse {
+  data: NotificationItem[];
+  meta: PaginationMeta;
 }
 
 export interface DrawnMovie {

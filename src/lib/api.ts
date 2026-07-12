@@ -13,6 +13,8 @@ import type {
   GetMoviesResponse,
   Movie,
   MovieList,
+  NotificationItem,
+  NotificationsResponse,
   PaginatedReviews,
   PaginationMeta,
   ProfilePrivacy,
@@ -680,6 +682,34 @@ export async function reorderList(listId: string, movieIds: string[], token: str
 
 export async function getActivity(token: string, scope = "all"): Promise<ActivityResponse> {
   return apiFetch<ActivityResponse>(`/activity?scope=${scope}`, {
+    token,
+  } as RequestInit & { token: string });
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export async function getNotifications(token: string, page = 1): Promise<NotificationsResponse> {
+  return apiFetch<NotificationsResponse>(`/notifications?page=${page}`, {
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function getUnreadNotificationsCount(token: string): Promise<number> {
+  return apiFetch<number>("/notifications/unread-count", {
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function markNotificationAsRead(id: string, token: string): Promise<void> {
+  return apiFetch<void>(`/notifications/${id}/read`, {
+    method: "PATCH",
+    token,
+  } as RequestInit & { token: string });
+}
+
+export async function markAllNotificationsAsRead(token: string): Promise<void> {
+  return apiFetch<void>("/notifications/read-all", {
+    method: "PATCH",
     token,
   } as RequestInit & { token: string });
 }

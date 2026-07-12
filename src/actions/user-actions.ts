@@ -68,6 +68,7 @@ export async function followUserAction(userId: string) {
   await followUser(userId, token);
   revalidatePath("/profile");
   revalidatePath("/users");
+  revalidatePath("/notifications");
 }
 
 export async function unfollowUserAction(userId: string) {
@@ -75,6 +76,7 @@ export async function unfollowUserAction(userId: string) {
   await unfollowUser(userId, token);
   revalidatePath("/profile");
   revalidatePath("/users");
+  revalidatePath("/notifications");
 }
 
 export async function getFollowersAction(userId: string, page = 1) {

@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/back-link";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { FollowTabs } from "@/components/profile/follow-tabs";
@@ -36,6 +37,8 @@ export function PublicProfileContent({
   const [followers, setFollowers] = useState<FollowUser[]>([]);
   const [following, setFollowing] = useState<FollowUser[]>([]);
   const [isFollowing, setIsFollowing] = useState(profile?.isFollowing ?? false);
+  const [isMutual, setIsMutual] = useState(profile?.isMutual ?? false);
+  const followsYou = profile?.followsYou ?? false;
 
   useEffect(() => {
     if (!profile) return;
@@ -75,16 +78,24 @@ export function PublicProfileContent({
         if (isFollowing) {
           await unfollowUserAction(profile!.id);
           setIsFollowing(false);
+          setIsMutual(false);
           toast.success("Deixou de seguir");
         } else {
           await followUserAction(profile!.id);
           setIsFollowing(true);
-          toast.success("Seguindo!");
+          setIsMutual(followsYou);
+          toast.success(followsYou ? "Seguindo de volta!" : "Seguindo!");
         }
       } catch {
         toast.error("Erro ao atualizar follow");
       }
     });
+  }
+
+  function getFollowButtonLabel() {
+    if (isFollowing) return "Deixar de seguir";
+    if (followsYou) return "Seguir de volta";
+    return "Seguir";
   }
 
   return (
@@ -93,14 +104,26 @@ export function PublicProfileContent({
       <ProfileHeader profile={profile} isOwn={isOwn} />
 
       {!isOwn && (
-        <Button
-          onClick={handleFollowToggle}
-          disabled={isPending}
-          variant={isFollowing ? "outline" : "default"}
-          className="gap-2"
-        >
-          {isFollowing ? "Deixar de seguir" : "Seguir"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {followsYou && !isFollowing && (
+            <Badge variant="outline" className="border-gold/30 text-gold bg-gold/10">
+              Te segue
+            </Badge>
+          )}
+          {isFollowing && isMutual && (
+            <Badge variant="outline" className="border-gold/30 text-gold bg-gold/10">
+              Seguem um ao outro
+            </Badge>
+          )}
+          <Button
+            onClick={handleFollowToggle}
+            disabled={isPending}
+            variant={isFollowing ? "outline" : "default"}
+            className="gap-2"
+          >
+            {getFollowButtonLabel()}
+          </Button>
+        </div>
       )}
 
       <FollowTabs followers={followers} following={following} />

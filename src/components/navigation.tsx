@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Film, Shuffle, LogOut, User, Activity } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,6 +77,8 @@ export function Navigation() {
 
           {/* User menu */}
           {session?.user && (
+            <div className="flex items-center gap-2">
+              <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <motion.button
@@ -128,6 +131,7 @@ export function Navigation() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           )}
         </div>
       </div>
